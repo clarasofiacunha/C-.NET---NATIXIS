@@ -1,5 +1,41 @@
+# Environment variables / secrets
 .env
+.env.*
+!.env.example
 
-# .NET build output
-bin/
-obj/
+# .NET backend build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+coverage/
+coverage.xml
+*.coverage
+*.coveragexml
+*.trx
+
+# Shared IDE files
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+_ReSharper*/
+*.DotSettings.user
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
