@@ -26,7 +26,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException(
         "Falta a connection string 'DefaultConnection'. " +
         "Configura-a com: dotnet user-secrets set " +
-        "\"ConnectionStrings:DefaultConnection\" \"Host=localhost;Port=5432;Database=personal_finance;Username=finance_dev;Password=...\"");
+        "\"ConnectionStrings:DefaultConnection\" \"Host=localhost;Port=5432;Database=personal_finance;Username=personal_dev;Password=...\"");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));

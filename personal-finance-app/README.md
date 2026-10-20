@@ -215,8 +215,8 @@ Abre `.env` no VS Code. O conteúdo deve seguir este modelo:
 
 ```dotenv
 POSTGRES_DB=personal_finance
-POSTGRES_USER=personal_finance_user
-POSTGRES_PASSWORD=escolhe_uma_password_local
+POSTGRES_USER=personal_dev
+POSTGRES_PASSWORD=dev_only_change_me
 ```
 
 Altera `POSTGRES_PASSWORD` para uma password tua, usada apenas no desenvolvimento local. **Não partilhes o teu `.env` nem o publiques no GitHub.**
@@ -256,7 +256,7 @@ dotnet user-secrets init --project backend/PersonalFinance.Api
 Depois, executa numa **só linha**, substituindo `A_TUA_PASSWORD` pelo valor utilizado em `.env`:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" 'Host=localhost;Port=5432;Database=personal_finance;Username=personal_finance_user;Password=A_TUA_PASSWORD' --project backend/PersonalFinance.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" 'Host=localhost;Port=5432;Database=personal_finance;Username=personal_dev;Password=dev_only_change_me' --project backend/PersonalFinance.Api
 ```
 
 Usamos **User Secrets** para a password não aparecer no código versionado. Cada colega deve configurar os seus próprios segredos na respetiva máquina.
@@ -268,6 +268,31 @@ dotnet ef database update --project backend/PersonalFinance.Api --startup-projec
 ```
 
 Este comando exige que a equipa já tenha criado e versionado uma migration inicial na pasta `Migrations/`. **Não cries uma nova migration `InitialCreate` em cada computador.** Se ainda não existir nenhuma migration, consulta a [secção 10](#10-como-criar-a-estrutura-inicial-apenas-uma-vez) ou contacta o responsável pelo backend.
+
+**Popular a base de dados com dados fictícios (opcional):**
+
+Após aplicar as migrations, e desde que o `DemoSeeder` esteja
+implementado e registado no `Program.cs`, executa na raiz:
+
+```powershell
+dotnet run --project backend/PersonalFinance.Api -- --seed
+```
+
+O seed permite criar dados de demonstração, incluindo:
+
+- Utilizadores fictícios com diferentes perfis financeiros.
+- Contas à ordem e contas poupança.
+- Categorias de receitas e despesas.
+- Transações distribuídas ao longo de 12 meses.
+- Orçamentos mensais por categoria.
+- Metas de poupança.
+
+Os dados são sintéticos e servem para testar funcionalidades
+como filtros, dashboard, orçamentos e relatórios.
+
+O comando deve ser executado apenas em ambiente de
+desenvolvimento. Não utilizar contas ou passwords de
+demonstração em produção.
 
 **Compilar o backend:**
 
@@ -563,6 +588,60 @@ Já pode existir outro PostgreSQL no computador. Não elimines outros serviços 
 1. Confirma que o Docker está a funcionar: `docker compose ps`.
 2. Confirma que o nome da base de dados, utilizador e password em `.env` correspondem à connection string guardada com `dotnet user-secrets`.
 3. Se alteraste a password do `.env` **depois** de criar o contentor/volume, o PostgreSQL pode continuar com as credenciais iniciais. Pede ajuda antes de limpar volumes; limpar o volume apaga os dados locais.
+
+**Erro: `28P01: password authentication failed`**
+
+Significa que o PostgreSQL rejeitou as credenciais utilizadas
+pelo backend.
+
+1. Confirmar que o contentor está a correr:
+
+```powershell
+docker compose ps
+```
+
+2. Verificar os nomes dos serviços:
+
+```powershell
+docker compose config --services
+```
+
+Neste projeto, o serviço chama-se `db` e o contentor
+chama-se `personal-finance-db`.
+
+3. Testar a ligação ao PostgreSQL:
+
+```powershell
+docker compose exec db psql -U personal_dev -d personal_finance
+```
+
+4. Confirmar que a connection string dos User Secrets
+utiliza o mesmo utilizador, base de dados e password
+configurados no PostgreSQL.
+
+**Erro: `service "postgres" is not running`**
+
+O nome do serviço Compose é `db`, não `postgres`.
+
+Utilizar `docker compose exec db ...` ou
+`docker exec -it personal-finance-db ...`.
+
+**Erro: `role "finance_dev" does not exist`**
+
+O utilizador configurado no projeto é `personal_dev`.
+Substituir `finance_dev` por `personal_dev` nos comandos
+e na connection string, depois de confirmar que essa role
+existe no PostgreSQL.
+
+**Atenção aos volumes Docker:**
+
+O volume `postgres_data` guarda os dados entre reinícios.
+Alterar o `.env` não altera automaticamente os utilizadores
+e as passwords de uma base de dados já inicializada.
+
+Nunca executar `docker compose down -v` para corrigir
+erros de autenticação sem confirmar que os dados podem
+ser eliminados.
 
 ### `dotnet` não é reconhecido / versão errada
 
