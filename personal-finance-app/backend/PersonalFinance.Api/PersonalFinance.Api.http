@@ -1,6 +1,57 @@
 @PersonalFinance.Api_HostAddress = http://localhost:5185
+@budgetId = 00000000-0000-0000-0000-000000000001
+@expenseCategoryId = 00000000-0000-0000-0000-000000000002
+@authCookie = replace-with-authenticated-cookie
 
 GET {{PersonalFinance.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### List budgets, optionally filtered by year and month
+GET {{PersonalFinance.Api_HostAddress}}/api/budgets?year=2026&month=10
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
+### Get a budget by ID
+GET {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
+### Create a monthly budget
+POST {{PersonalFinance.Api_HostAddress}}/api/budgets
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Content-Type: application/json
+
+{
+  "categoryId": "{{expenseCategoryId}}",
+  "month": 10,
+  "year": 2026,
+  "limitAmount": 250.00
+}
+
+### Replace a monthly budget
+PUT {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Content-Type: application/json
+
+{
+  "categoryId": "{{expenseCategoryId}}",
+  "month": 10,
+  "year": 2026,
+  "limitAmount": 300.00
+}
+
+### Delete a monthly budget
+DELETE {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+
+### Invalid month should return 400
+GET {{PersonalFinance.Api_HostAddress}}/api/budgets?month=13
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
+### Unknown budget should return 404
+GET {{PersonalFinance.Api_HostAddress}}/api/budgets/00000000-0000-0000-0000-000000000099
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json

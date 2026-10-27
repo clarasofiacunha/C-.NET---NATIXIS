@@ -2,10 +2,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
+using PersonalFinance.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
@@ -51,6 +54,9 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+    app.MapOpenApi();
 
 if (args.Contains("--seed", StringComparer.OrdinalIgnoreCase))
 {
