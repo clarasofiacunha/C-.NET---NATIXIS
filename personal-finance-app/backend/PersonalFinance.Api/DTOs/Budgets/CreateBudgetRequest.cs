@@ -6,7 +6,7 @@ namespace PersonalFinance.Api.DTOs.Budgets;
 public sealed record CreateBudgetRequest
 {
     /// <summary>Category to which this budget applies.</summary>
-    [Required]
+    [NotEmptyGuid]
     public required Guid CategoryId { get; init; }
 
     /// <summary>Month of the budget, from 1 to 12.</summary>
@@ -19,5 +19,6 @@ public sealed record CreateBudgetRequest
 
     /// <summary>Positive spending limit for the category.</summary>
     [Range(typeof(decimal), "0.01", "9999999999999999.99")]
+    [TwoDecimalPlaces]
     public required decimal LimitAmount { get; init; }
 }

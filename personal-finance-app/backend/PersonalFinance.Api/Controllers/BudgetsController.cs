@@ -60,8 +60,6 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
     {
         if (!TryGetUserId(out var userId))
             return Unauthorized();
-        if (request.LimitAmount != decimal.Round(request.LimitAmount, 2))
-            return BadRequest(new { error = "O valor do orçamento pode ter no máximo duas casas decimais." });
 
         var result = await budgets.CreateAsync(userId, request, cancellationToken);
         return result.Status switch
@@ -89,8 +87,6 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
     {
         if (!TryGetUserId(out var userId))
             return Unauthorized();
-        if (request.LimitAmount != decimal.Round(request.LimitAmount, 2))
-            return BadRequest(new { error = "O valor do orçamento pode ter no máximo duas casas decimais." });
 
         var result = await budgets.UpdateAsync(userId, id, request, cancellationToken);
         return result.Status switch
