@@ -10,6 +10,9 @@ public interface IBudgetService
     Task<BudgetResponse?> GetByIdAsync(
         Guid userId, Guid id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<BudgetAlertResponse>> GetAlertsAsync(
+        Guid userId, int? year, int? month, CancellationToken cancellationToken);
+
     Task<BudgetOperationResult> CreateAsync(
         Guid userId, CreateBudgetRequest request, CancellationToken cancellationToken);
 

@@ -35,6 +35,51 @@ public sealed class BudgetService(AppDbContext db) : IBudgetService
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<BudgetAlertResponse>> GetAlertsAsync(
+        Guid userId, int? year, int? month, CancellationToken cancellationToken)
+    {
+        var budgets = await db.Budgets.AsNoTracking()
+            .Where(b => b.UserId == userId)
+            .Where(b => year == null || b.Year == year)
+            .Where(b => month == null || b.Month == month)
+            .Select(b => new
+            {
+                b.Id,
+                b.CategoryId,
+                CategoryName = b.Category.Name,
+                b.Month,
+                b.Year,
+                b.LimitAmount,
+                SpentAmount = db.Transactions.AsNoTracking()
+                    .Where(t => t.UserId == userId
+                        && t.CategoryId == b.CategoryId
+                        && t.Type == TransactionType.Expense
+                        && t.Date.Year == b.Year
+                        && t.Date.Month == b.Month)
+                    .Sum(t => (decimal?)t.Amount) ?? 0m
+            })
+            .OrderByDescending(b => b.Year)
+            .ThenByDescending(b => b.Month)
+            .ThenBy(b => b.CategoryName)
+            .ToListAsync(cancellationToken);
+
+        return budgets
+            .Select(b => (Budget: b, Status: BudgetAlertClassifier.Classify(b.LimitAmount, b.SpentAmount)))
+            .Where(x => x.Status is not null)
+            .Select(x => new BudgetAlertResponse(
+                x.Budget.Id,
+                x.Budget.CategoryId,
+                x.Budget.CategoryName,
+                x.Budget.Month,
+                x.Budget.Year,
+                x.Budget.LimitAmount,
+                x.Budget.SpentAmount,
+                x.Budget.LimitAmount - x.Budget.SpentAmount,
+                decimal.Round(x.Budget.SpentAmount / x.Budget.LimitAmount * 100m, 2),
+                x.Status!.Value))
+            .ToList();
+    }
+
     public async Task<BudgetOperationResult> CreateAsync(
         Guid userId, CreateBudgetRequest request, CancellationToken cancellationToken)
     {

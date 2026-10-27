@@ -13,6 +13,11 @@ GET {{PersonalFinance.Api_HostAddress}}/api/budgets?year=2026&month=10
 Cookie: .AspNetCore.Identity.Application={{authCookie}}
 Accept: application/json
 
+### Get current budget alerts (80% near limit, over 100% exceeded)
+GET {{PersonalFinance.Api_HostAddress}}/api/budgets/alerts?year=2026&month=10
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
 ### Get a budget by ID
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
 Cookie: .AspNetCore.Identity.Application={{authCookie}}

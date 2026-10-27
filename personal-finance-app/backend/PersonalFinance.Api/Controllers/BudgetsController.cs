@@ -31,6 +31,34 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
         return Ok(await budgets.GetAllAsync(userId, year, month, cancellationToken));
     }
 
+    [HttpGet("alerts")]
+    [EndpointSummary("Get monthly budget alerts")]
+    [EndpointDescription(
+        "Returns budgets at or above 80% of their limit, based on the authenticated user's expenses.")]
+    [ProducesResponseType<IReadOnlyList<BudgetAlertResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<BudgetAlertResponse>>> GetAlerts(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken cancellationToken)
+    {
+        if (year is < 1 or > 9999 || month is < 1 or > 12)
+            return BadRequest(new { error = "Ano ou mês inválido." });
+
+        if (year is null && month is null)
+        {
+            var currentMonth = DateTime.UtcNow;
+            year = currentMonth.Year;
+            month = currentMonth.Month;
+        }
+
+        if (!TryGetUserId(out var userId))
+            return Unauthorized();
+
+        return Ok(await budgets.GetAlertsAsync(userId, year, month, cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
     [EndpointSummary("Get a monthly budget")]
     [EndpointDescription("Returns one budget owned by the authenticated user.")]
