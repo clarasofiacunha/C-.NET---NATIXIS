@@ -1,11 +1,21 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Permite "Checking", "Savings" e "Cash" no JSON; rejeita numeros para o tipo de conta.
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter<AccountType>(allowIntegerValues: false));
+});
+
+// Swagger - documentação e testes da API
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
@@ -15,7 +25,8 @@ builder.Services.AddCors(options =>
             "http://127.0.0.1:5173",
             "http://localhost:3000")
         .AllowAnyHeader()
-        .AllowAnyMethod());
+        .AllowAnyMethod()
+        .AllowCredentials()); // Cookies enviados pelo frontend local em desenvolvimento.
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -31,6 +42,7 @@ builder.Services
     .AddIdentityCore<AppUser>()
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager()
     .AddDefaultTokenProviders();
 
 builder.Services
@@ -60,6 +72,13 @@ if (args.Contains("--seed", StringComparer.OrdinalIgnoreCase))
     using var scope = app.Services.CreateScope();
     await DemoSeeder.SeedAsync(scope.ServiceProvider);
     app.Logger.LogInformation("Dados de demonstracao verificados/inseridos.");
+}
+
+// Disponibilizar Swagger apenas em desenvolvimento
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseCors("LocalFrontend");
