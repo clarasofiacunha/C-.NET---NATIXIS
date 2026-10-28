@@ -9,7 +9,7 @@
 .intro-detail span { font-size: 25px; color: #d7e6ab; }
 .intro small { color: #acc1b4; font-size: 12px; }
 .form-panel { display: flex; align-items: center; justify-content: center; padding: 48px 28px; }
-.form-container { width: 100%; max-width: 390px; view-transition-name: auth-card; animation: auth-card-in 360ms cubic-bezier(.22, .8, .28, 1) both; }
+.form-container { width: 100%; max-width: 390px; }
 .page-switch { display: flex; border-bottom: 1px solid #dce3da; margin-bottom: 36px; gap: 26px; }
 .page-switch a { padding: 12px 0; text-decoration: none; font-size: 14px; color: #6d7b70; border-bottom: 2px solid transparent; }
 .page-switch a[aria-current] { color: #183f35; border-color: #20634f; font-weight: 650; }
@@ -23,6 +23,7 @@ h2 { font-size: 30px; font-weight: 600; letter-spacing: -1px; margin: 0 0 12px; 
 .password-input { position: relative; }
 .password-input input { padding-right: 80px; }
 .reveal { position: absolute; right: 10px; top: 9px; min-height: 30px; background: transparent; border: 0; color: #35634c; font-size: 12px; }
+.forgot-password { display: block; margin: -9px 0 20px auto; padding: 0; border: 0; background: transparent; color: #35634c; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .error { color: #a22e2e; font-size: 12px; line-height: 1.5; margin: 7px 0 0; }
 .rules { list-style: none; padding: 0; margin: -5px 0 20px; color: #6b786f; font-size: 12px; line-height: 1.9; }
 .rules span { display: inline-block; width: 16px; }
@@ -33,32 +34,6 @@ h2 { font-size: 30px; font-weight: 600; letter-spacing: -1px; margin: 0 0 12px; 
 .alternate a { margin-left: 5px; font-weight: 600; }
 .prototype { text-align: center; color: #6b786f; font-size: 11px; margin-top: 36px; }
 .success { padding: 14px; border-radius: 7px; background: #e6f0e4; color: #23503a; font-size: 13px; line-height: 1.6; }
-
-@keyframes auth-card-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-::view-transition-old(auth-card),
-::view-transition-new(auth-card) {
-  animation-duration: 360ms;
-  animation-timing-function: cubic-bezier(.22, .8, .28, 1);
-}
-
-html:has(.auth-layout--register) ::view-transition-old(auth-card) { animation-name: auth-card-out-left; }
-html:has(.auth-layout--register) ::view-transition-new(auth-card) { animation-name: auth-card-in-right; }
-html:has(.auth-layout--login) ::view-transition-old(auth-card) { animation-name: auth-card-out-right; }
-html:has(.auth-layout--login) ::view-transition-new(auth-card) { animation-name: auth-card-in-left; }
-
-@keyframes auth-card-out-left { to { opacity: 0; transform: translateX(-22px); } }
-@keyframes auth-card-in-right { from { opacity: 0; transform: translateX(22px); } }
-@keyframes auth-card-out-right { to { opacity: 0; transform: translateX(22px); } }
-@keyframes auth-card-in-left { from { opacity: 0; transform: translateX(-22px); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .form-container { animation: none; }
-  ::view-transition-old(auth-card), ::view-transition-new(auth-card) { animation: none; }
-}
 
 /* Natixis purple palette */
 .intro { position: relative; isolation: isolate; overflow: hidden; background: radial-gradient(circle at 86% 15%, #d6b7e5 0, transparent 38%), radial-gradient(circle at 8% 90%, #955eb5 0, transparent 45%), #ae78c7; color: #3d174e; }
@@ -76,6 +51,7 @@ html:has(.auth-layout--login) ::view-transition-new(auth-card) { animation-name:
 .page-switch a[aria-current] { color: #8f55b5; border-color: #bd73e5; }
 .field input { border-color: #d9cce2; color: #30153e; }
 .reveal { color: #8f55b5; }
+.forgot-password { color: #8f55b5; }
 .rules .met { color: #8f55b5; }
 .submit { background: #8f55b5; }
 .submit:hover { background: #733e96; }
@@ -105,7 +81,7 @@ html:has(.auth-layout--login) ::view-transition-new(auth-card) { animation-name:
 @keyframes chart-point-in { to { opacity: 1; } }
 @keyframes finance-float { from { transform: translateY(0); } to { transform: translateY(-7px); } }
 
-@media (max-width: 720px) { .auth-layout { grid-template-columns: 1fr; } .intro { padding: 25px; gap: 25px; } .intro h1 { font-size: 34px; margin: 14px 0; letter-spacing: -1px; } .intro-copy > p { margin-bottom: 0; } .intro-detail, .intro small { display: none; } .form-panel { padding: 24px; } .page-switch { margin-bottom: 25px; } }
+@media (max-width: 720px) { .auth-layout { grid-template-columns: 1fr; } .intro, .form-panel { grid-column: auto; grid-row: auto; } .intro { padding: 25px; gap: 25px; } .intro h1 { font-size: 34px; margin: 14px 0; letter-spacing: -1px; } .intro-copy > p { margin-bottom: 0; } .intro-detail, .intro small { display: none; } .form-panel { padding: 24px; } .page-switch { margin-bottom: 25px; } }
 
 @keyframes intro-orb-drift {
   from { transform: translate3d(0, 0, 0); }

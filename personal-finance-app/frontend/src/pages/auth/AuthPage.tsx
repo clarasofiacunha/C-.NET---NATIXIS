@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useEffect } from 'react'
 import '../../styles/auth.css'
 
-export type AuthPageMode = 'login' | 'register'
+export type AuthPageMode = 'login' | 'register' | 'forgot-password'
 type Field = 'name' | 'email' | 'password' | 'confirm'
 const initial = { name: '', email: '', password: '', confirm: '' }
 const passwordRules = [
@@ -30,10 +30,12 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
   const [success, setSuccess] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
   const register = page === 'register'
+  const recovery = page === 'forgot-password'
+  const passwordSetup = register || recovery
   const errors: Record<Field, string> = {
     name: values.name.trim().length < 2 ? 'Enter your name using at least 2 characters.' : '',
-    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Enter a valid email, such as name@example.com.' : '',
-    password: !values.password ? 'Enter your password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'Your password must meet all the requirements below.' : '',
+    email: recovery || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? '' : 'Enter a valid email, such as name@example.com.',
+    password: !values.password ? 'Enter your password.' : passwordSetup && !passwordRules.every(rule => rule.test(values.password)) ? 'Your password must meet all the requirements below.' : '',
     confirm: values.confirm !== values.password || !values.confirm ? 'Passwords must match.' : '',
   }
 
@@ -49,7 +51,7 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSuccess(false)
-    const fields: Field[] = register ? ['name', 'email', 'password', 'confirm'] : ['email', 'password']
+    const fields: Field[] = recovery ? ['password', 'confirm'] : register ? ['name', 'email', 'password', 'confirm'] : ['email', 'password']
     setTouched(Object.fromEntries(fields.map(field => [field, true])))
     const invalid = fields.find(field => errors[field])
     if (invalid) {
@@ -66,7 +68,7 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
       <div className={key === 'password' ? 'password-input' : undefined}>
         <input id={key} name={key} type={type} autoComplete={autoComplete} placeholder={placeholder}
           required maxLength={key === 'name' ? 100 : key === 'email' ? 254 : 128}
-          value={values[key]} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : key === 'password' && register ? 'password-rules' : undefined}
+          value={values[key]} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : key === 'password' && passwordSetup ? 'password-rules' : undefined}
           onBlur={() => setTouched(previous => ({ ...previous, [key]: true }))}
           onChange={event => { setValues(previous => ({ ...previous, [key]: event.target.value })); setSuccess(false) }} />
         {key === 'password' && <button className="reveal" type="button" aria-controls="password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button>}
@@ -83,19 +85,24 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
     </aside>
     <section className="form-panel" aria-labelledby="form-title">
       <div className="form-container">
-        <nav className="page-switch" aria-label="Authentication"><a href="#login" aria-current={!register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('login') }}>Sign in</a><a href="#register" aria-current={register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('register') }}>Create account</a></nav>
-        <h2 id="form-title">{register ? 'Start here.' : 'Welcome back.'}</h2>
-        <p className="subtitle">{register ? 'Create your account and start organizing your finances.' : 'Sign in to keep track of your finances.'}</p>
+        {recovery
+          ? <nav className="page-switch" aria-label="Password recovery"><a href="#login" onClick={event => { event.preventDefault(); navigate('login') }}>← Back to sign in</a></nav>
+          : <nav className="page-switch" aria-label="Authentication"><a href="#login" aria-current={!register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('login') }}>Sign in</a><a href="#register" aria-current={register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('register') }}>Create account</a></nav>}
+        <h2 id="form-title">{recovery ? 'Choose a new password.' : register ? 'Start here.' : 'Welcome back.'}</h2>
+        <p className="subtitle">{recovery ? 'Choose a strong new password to keep your account secure.' : register ? 'Create your account and start organizing your finances.' : 'Sign in to keep track of your finances.'}</p>
         <form noValidate onSubmit={submit}>
           {register && field('name', 'Name', 'text', 'name', 'Your name')}
-          {field('email', 'Email', 'email', 'email', 'name@example.com')}
-          {field('password', 'Password', showPassword ? 'text' : 'password', register ? 'new-password' : 'current-password', register ? 'Create a password' : 'Your password')}
-          {register && <ul className="rules" id="password-rules">{passwordRules.map(rule => <li key={rule.label} className={rule.test(values.password) ? 'met' : ''}><span aria-hidden="true">{rule.test(values.password) ? '✓' : '○'}</span> {rule.label}</li>)}</ul>}
-          {register && field('confirm', 'Confirm password', showPassword ? 'text' : 'password', 'new-password', 'Repeat your password')}
-          <button className="submit" type="submit">{register ? 'Create account' : 'Sign in'} <span aria-hidden="true">→</span></button>
-          {success && <p className="success" role="status">Your details are valid. This prototype validates the form; {register ? 'registration' : 'sign-in'} is not connected to the API yet.</p>}
+          {!recovery && field('email', 'Email', 'email', 'email', 'name@example.com')}
+          {recovery
+            ? field('password', 'New password', showPassword ? 'text' : 'password', 'new-password', 'Create a new password')
+            : field('password', 'Password', showPassword ? 'text' : 'password', register ? 'new-password' : 'current-password', register ? 'Create a password' : 'Your password')}
+          {!register && !recovery && <button className="forgot-password" type="button" onClick={() => navigate('forgot-password')}>Forgot password?</button>}
+          {passwordSetup && <ul className="rules" id="password-rules">{passwordRules.map(rule => <li key={rule.label} className={rule.test(values.password) ? 'met' : ''}><span aria-hidden="true">{rule.test(values.password) ? '✓' : '○'}</span> {rule.label}</li>)}</ul>}
+          {passwordSetup && field('confirm', recovery ? 'Confirm new password' : 'Confirm password', showPassword ? 'text' : 'password', 'new-password', recovery ? 'Repeat your new password' : 'Repeat your password')}
+          <button className="submit" type="submit">{recovery ? 'Update password' : register ? 'Create account' : 'Sign in'} <span aria-hidden="true">→</span></button>
+          {success && <p className="success" role="status">{recovery ? 'Your new password is valid. This prototype does not update your account yet.' : `Your details are valid. This prototype validates the form; ${register ? 'registration' : 'sign-in'} is not connected to the API yet.`}</p>}
         </form>
-        <p className="alternate">{register ? 'Already have an account?' : "Don't have an account yet?"} <a href={register ? '#login' : '#register'} onClick={event => { event.preventDefault(); navigate(register ? 'login' : 'register') }}>{register ? 'Sign in' : 'Create account'}</a></p>
+        {!recovery && <p className="alternate">{register ? 'Already have an account?' : "Don't have an account yet?"} <a href={register ? '#login' : '#register'} onClick={event => { event.preventDefault(); navigate(register ? 'login' : 'register') }}>{register ? 'Sign in' : 'Create account'}</a></p>}
         <p className="prototype">Interface prototype · No data is sent</p>
       </div>
     </section>
