@@ -28,6 +28,13 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.User.RequireUniqueEmail = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = false;
+});
+
 builder.Services
     .AddIdentityCore<AppUser>()
     .AddSignInManager()
@@ -65,11 +72,11 @@ var app = builder.Build();
 if (args.Contains("--seed", StringComparer.OrdinalIgnoreCase))
 {
     if (!app.Environment.IsDevelopment())
-        throw new InvalidOperationException("O --seed esta disponivel apenas em ambiente Development.");
+        throw new InvalidOperationException("O --seed está dispoível apenas em ambiente Development.");
 
     using var scope = app.Services.CreateScope();
     await DemoSeeder.SeedAsync(scope.ServiceProvider);
-    app.Logger.LogInformation("Dados de demonstracao verificados/inseridos.");
+    app.Logger.LogInformation("Dados de demonstração verificados/inseridos.");
 }
 
 app.UseCors("LocalFrontend");
