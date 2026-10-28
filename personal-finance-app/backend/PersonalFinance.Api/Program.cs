@@ -26,7 +26,11 @@ builder.Services.AddCors(options =>
             "http://localhost:3000")
         .AllowAnyHeader()
         .AllowAnyMethod()
+<<<<<<< HEAD
         .AllowCredentials()); // Cookies enviados pelo frontend local em desenvolvimento.
+=======
+        .AllowCredentials());
+>>>>>>> origin/main
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -38,8 +42,16 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.User.RequireUniqueEmail = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = false;
+});
+
 builder.Services
     .AddIdentityCore<AppUser>()
+    .AddSignInManager()
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddSignInManager()
@@ -49,6 +61,14 @@ builder.Services
     .AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddCookie(IdentityConstants.ApplicationScheme, options =>
     {
+        options.Cookie.Name = "pf.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
         options.Events.OnRedirectToLogin = context =>
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -67,11 +87,11 @@ var app = builder.Build();
 if (args.Contains("--seed", StringComparer.OrdinalIgnoreCase))
 {
     if (!app.Environment.IsDevelopment())
-        throw new InvalidOperationException("O --seed esta disponivel apenas em ambiente Development.");
+        throw new InvalidOperationException("O --seed está dispoível apenas em ambiente Development.");
 
     using var scope = app.Services.CreateScope();
     await DemoSeeder.SeedAsync(scope.ServiceProvider);
-    app.Logger.LogInformation("Dados de demonstracao verificados/inseridos.");
+    app.Logger.LogInformation("Dados de demonstração verificados/inseridos.");
 }
 
 // Disponibilizar Swagger apenas em desenvolvimento
@@ -87,4 +107,9 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+<<<<<<< HEAD
 public partial class Program { }
+=======
+
+public partial class Program;
+>>>>>>> origin/main
