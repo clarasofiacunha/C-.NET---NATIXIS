@@ -26,11 +26,7 @@ builder.Services.AddCors(options =>
             "http://localhost:3000")
         .AllowAnyHeader()
         .AllowAnyMethod()
-<<<<<<< HEAD
-        .AllowCredentials()); // Cookies enviados pelo frontend local em desenvolvimento.
-=======
         .AllowCredentials());
->>>>>>> origin/main
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -107,9 +103,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-<<<<<<< HEAD
-public partial class Program { }
-=======
 
 public partial class Program;
->>>>>>> origin/main
