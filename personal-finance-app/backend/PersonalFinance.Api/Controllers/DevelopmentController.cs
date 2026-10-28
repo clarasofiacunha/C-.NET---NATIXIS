@@ -12,6 +12,7 @@ namespace PersonalFinance.Api.Controllers;
 public class DevelopmentController(
     AppDbContext db,
     UserManager<AppUser> userManager,
+    SignInManager<AppUser> signInManager,
     IWebHostEnvironment environment) : ControllerBase
 {
     private bool IsDevelopment => environment.IsDevelopment();
@@ -53,6 +54,35 @@ public class DevelopmentController(
             && await userManager.CheckPasswordAsync(user, request.Password ?? "");
 
         return Ok(new { passwordCorrect = valid });
+    }
+
+    // Login temporario: apenas em Development, ate existir o AuthController definitivo.
+    // Usa a password real do ASP.NET Identity; nao aceita identificadores arbitrarios de utilizador.
+    [HttpPost("auth/login")]
+    public async Task<IActionResult> Login(LoginCheckRequestDto request)
+    {
+        if (!IsDevelopment) return NotFound();
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "Email e palavra-passe sao obrigatorios." });
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is null) return Unauthorized(new { error = "Credenciais invalidas." });
+
+        var result = await signInManager.PasswordSignInAsync(
+            user, request.Password, isPersistent: false, lockoutOnFailure: true);
+
+        if (!result.Succeeded)
+            return Unauthorized(new { error = "Credenciais invalidas ou acesso bloqueado." });
+
+        return Ok(new { user.Id, user.Name, user.Email });
+    }
+
+    [HttpPost("auth/logout")]
+    public async Task<IActionResult> Logout()
+    {
+        if (!IsDevelopment) return NotFound();
+        await signInManager.SignOutAsync();
+        return NoContent();
     }
 
     [HttpGet("users/{userId:guid}/accounts")]
