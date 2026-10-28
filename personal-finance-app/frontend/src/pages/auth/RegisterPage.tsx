@@ -1,11 +1,11 @@
 import AuthPage from './AuthPage'
 
 interface RegisterPageProps {
-  onNavigate: (page: 'login' | 'registo') => void
+  onNavigate: (page: 'login' | 'register') => void
 }
 
 function RegisterPage({ onNavigate }: RegisterPageProps) {
-  return <AuthPage page="registo" onNavigate={onNavigate} />
+  return <AuthPage page="register" onNavigate={onNavigate} />
 }
 
 export default RegisterPage

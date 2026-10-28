@@ -45,8 +45,8 @@ h2 { font-size: 30px; font-weight: 600; letter-spacing: -1px; margin: 0 0 12px; 
   animation-timing-function: cubic-bezier(.22, .8, .28, 1);
 }
 
-html:has(.auth-layout--registo) ::view-transition-old(auth-card) { animation-name: auth-card-out-left; }
-html:has(.auth-layout--registo) ::view-transition-new(auth-card) { animation-name: auth-card-in-right; }
+html:has(.auth-layout--register) ::view-transition-old(auth-card) { animation-name: auth-card-out-left; }
+html:has(.auth-layout--register) ::view-transition-new(auth-card) { animation-name: auth-card-in-right; }
 html:has(.auth-layout--login) ::view-transition-old(auth-card) { animation-name: auth-card-out-right; }
 html:has(.auth-layout--login) ::view-transition-new(auth-card) { animation-name: auth-card-in-left; }
 

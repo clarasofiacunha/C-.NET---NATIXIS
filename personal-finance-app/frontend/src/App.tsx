@@ -8,7 +8,7 @@ type ViewTransitionDocument = Document & {
 }
 
 function getRoute(): AuthPageMode {
-  return window.location.hash === '#registo' ? 'registo' : 'login'
+  return window.location.hash === '#register' ? 'register' : 'login'
 }
 
 function App() {
@@ -37,8 +37,8 @@ function App() {
     updateRoute()
   }
 
-  return route === 'registo'
-    ? <RegisterPage key="registo" onNavigate={navigate} />
+  return route === 'register'
+    ? <RegisterPage key="register" onNavigate={navigate} />
     : <LoginPage key="login" onNavigate={navigate} />
 }
 

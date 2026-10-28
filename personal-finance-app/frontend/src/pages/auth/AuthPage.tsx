@@ -3,19 +3,19 @@ import type { FormEvent } from 'react'
 import { useEffect } from 'react'
 import '../../styles/auth.css'
 
-export type AuthPageMode = 'login' | 'registo'
+export type AuthPageMode = 'login' | 'register'
 type Field = 'name' | 'email' | 'password' | 'confirm'
 const initial = { name: '', email: '', password: '', confirm: '' }
 const passwordRules = [
-  { label: 'Pelo menos 6 caracteres', test: (value: string) => value.length >= 6 },
-  { label: 'Uma letra maiúscula e uma minúscula', test: (value: string) => /[A-Z]/.test(value) && /[a-z]/.test(value) },
-  { label: 'Um número', test: (value: string) => /\d/.test(value) },
-  { label: 'Um símbolo (ex.: !, @, #)', test: (value: string) => /[^a-zA-Z0-9]/.test(value) },
+  { label: 'At least 6 characters', test: (value: string) => value.length >= 6 },
+  { label: 'One uppercase and one lowercase letter', test: (value: string) => /[A-Z]/.test(value) && /[a-z]/.test(value) },
+  { label: 'One number', test: (value: string) => /\d/.test(value) },
+  { label: 'One symbol (e.g. !, @, #)', test: (value: string) => /[^a-zA-Z0-9]/.test(value) },
 ]
 const financialTips = [
-  'Define um limite para despesas variáveis.',
-  'Reserva primeiro uma pequena parte para poupar.',
-  'Reve as tuas subscrições no início de cada mês.',
+  'Set a limit for variable expenses.',
+  'Set aside a small amount for savings first.',
+  'Review your subscriptions at the beginning of each month.',
 ]
 
 interface AuthPageProps {
@@ -29,12 +29,12 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [success, setSuccess] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
-  const register = page === 'registo'
+  const register = page === 'register'
   const errors: Record<Field, string> = {
-    name: values.name.trim().length < 2 ? 'Introduz o teu nome com pelo menos 2 caracteres.' : '',
-    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Introduz um email válido, como nome@exemplo.pt.' : '',
-    password: !values.password ? 'Introduz a tua password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'A password deve cumprir todas as regras abaixo.' : '',
-    confirm: values.confirm !== values.password || !values.confirm ? 'As passwords têm de ser iguais.' : '',
+    name: values.name.trim().length < 2 ? 'Enter your name using at least 2 characters.' : '',
+    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Enter a valid email, such as name@example.com.' : '',
+    password: !values.password ? 'Enter your password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'Your password must meet all the requirements below.' : '',
+    confirm: values.confirm !== values.password || !values.confirm ? 'Passwords must match.' : '',
   }
 
   useEffect(() => {
@@ -69,7 +69,7 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
           value={values[key]} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : key === 'password' && register ? 'password-rules' : undefined}
           onBlur={() => setTouched(previous => ({ ...previous, [key]: true }))}
           onChange={event => { setValues(previous => ({ ...previous, [key]: event.target.value })); setSuccess(false) }} />
-        {key === 'password' && <button className="reveal" type="button" aria-controls="password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Ocultar' : 'Mostrar'}</button>}
+        {key === 'password' && <button className="reveal" type="button" aria-controls="password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button>}
       </div>
       {invalid && <p className="error" id={`${key}-error`}>{errors[key]}</p>}
     </div>
@@ -78,25 +78,25 @@ function AuthPage({ page, onNavigate }: AuthPageProps) {
   return <main className={`auth-layout auth-layout--${page}`}>
     <aside className="intro">
       <a className="brand" href="#login" onClick={event => { event.preventDefault(); navigate('login') }}><span className="brand-icon" aria-hidden="true">€</span> Personal Finance</a>
-      <div className="intro-copy"><span className="eyebrow">AS TUAS FINANÇAS, COM CLAREZA</span><h1>Pequenos passos.<br />Mais controlo.</h1><p>Organiza as tuas despesas, planeia o mês e aproxima-te dos teus objetivos.</p><p className="financial-tip" aria-live="polite"><span aria-hidden="true">✦</span>{financialTips[tipIndex]}</p><div className="finance-teaser" aria-label="Exemplo de um resumo financeiro"><div className="balance-card"><span>Saldo disponível</span><strong>€2 480,00</strong><p><b aria-hidden="true">↗</b> +€248 este mês</p><svg className="balance-chart" viewBox="0 0 260 62" aria-hidden="true"><path d="M3 49C28 48 39 39 59 42S91 53 111 38s27-21 45-15 26 20 45 10 32-27 56-23" /><circle cx="3" cy="49" r="3" /><circle cx="111" cy="38" r="3" /><circle cx="201" cy="33" r="3" /><circle cx="257" cy="10" r="3" /></svg></div><div className="finance-card finance-card--budget"><span>Orçamento mensal</span><strong>72%</strong><i><b /></i></div><div className="finance-card finance-card--goal"><span>Meta de poupança</span><strong>4 / 6 meses</strong></div></div><div className="intro-detail"><span aria-hidden="true">↗</span> Um lugar para acompanhares o teu dinheiro.</div></div>
+      <div className="intro-copy"><span className="eyebrow">YOUR FINANCES, MADE CLEAR</span><h1>Small steps.<br />More control.</h1><p>Organize your expenses, plan your month, and get closer to your goals.</p><p className="financial-tip" aria-live="polite"><span aria-hidden="true">✦</span>{financialTips[tipIndex]}</p><div className="finance-teaser" aria-label="Example financial overview"><div className="balance-card"><span>Available balance</span><strong>€2,480.00</strong><p><b aria-hidden="true">↗</b> +€248 this month</p><svg className="balance-chart" viewBox="0 0 260 62" aria-hidden="true"><path d="M3 49C28 48 39 39 59 42S91 53 111 38s27-21 45-15 26 20 45 10 32-27 56-23" /><circle cx="3" cy="49" r="3" /><circle cx="111" cy="38" r="3" /><circle cx="201" cy="33" r="3" /><circle cx="257" cy="10" r="3" /></svg></div><div className="finance-card finance-card--budget"><span>Monthly budget</span><strong>72%</strong><i><b /></i></div><div className="finance-card finance-card--goal"><span>Savings goal</span><strong>4 / 6 months</strong></div></div><div className="intro-detail"><span aria-hidden="true">↗</span> One place to keep track of your money.</div></div>
       <div className="intro-footer-spacer" aria-hidden="true" />
     </aside>
     <section className="form-panel" aria-labelledby="form-title">
       <div className="form-container">
-        <nav className="page-switch" aria-label="Autenticação"><a href="#login" aria-current={!register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('login') }}>Entrar</a><a href="#registo" aria-current={register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('registo') }}>Criar conta</a></nav>
-        <h2 id="form-title">{register ? 'Começa por aqui.' : 'Bem-vindo de volta.'}</h2>
-        <p className="subtitle">{register ? 'Cria a tua conta e começa a organizar as tuas finanças.' : 'Entra na tua conta para acompanhar as tuas finanças.'}</p>
+        <nav className="page-switch" aria-label="Authentication"><a href="#login" aria-current={!register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('login') }}>Sign in</a><a href="#register" aria-current={register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('register') }}>Create account</a></nav>
+        <h2 id="form-title">{register ? 'Start here.' : 'Welcome back.'}</h2>
+        <p className="subtitle">{register ? 'Create your account and start organizing your finances.' : 'Sign in to keep track of your finances.'}</p>
         <form noValidate onSubmit={submit}>
-          {register && field('name', 'Nome', 'text', 'name', 'O teu nome')}
-          {field('email', 'Email', 'email', 'email', 'nome@exemplo.pt')}
-          {field('password', 'Password', showPassword ? 'text' : 'password', register ? 'new-password' : 'current-password', register ? 'Cria uma password' : 'A tua password')}
+          {register && field('name', 'Name', 'text', 'name', 'Your name')}
+          {field('email', 'Email', 'email', 'email', 'name@example.com')}
+          {field('password', 'Password', showPassword ? 'text' : 'password', register ? 'new-password' : 'current-password', register ? 'Create a password' : 'Your password')}
           {register && <ul className="rules" id="password-rules">{passwordRules.map(rule => <li key={rule.label} className={rule.test(values.password) ? 'met' : ''}><span aria-hidden="true">{rule.test(values.password) ? '✓' : '○'}</span> {rule.label}</li>)}</ul>}
-          {register && field('confirm', 'Confirmar password', showPassword ? 'text' : 'password', 'new-password', 'Repete a password')}
-          <button className="submit" type="submit">{register ? 'Criar conta' : 'Entrar'} <span aria-hidden="true">→</span></button>
-          {success && <p className="success" role="status">Dados válidos! Este protótipo verifica o formulário; {register ? 'o registo' : 'o login'} ainda não está ligado à API.</p>}
+          {register && field('confirm', 'Confirm password', showPassword ? 'text' : 'password', 'new-password', 'Repeat your password')}
+          <button className="submit" type="submit">{register ? 'Create account' : 'Sign in'} <span aria-hidden="true">→</span></button>
+          {success && <p className="success" role="status">Your details are valid. This prototype validates the form; {register ? 'registration' : 'sign-in'} is not connected to the API yet.</p>}
         </form>
-        <p className="alternate">{register ? 'Já tens conta?' : 'Ainda não tens conta?'} <a href={register ? '#login' : '#registo'} onClick={event => { event.preventDefault(); navigate(register ? 'login' : 'registo') }}>{register ? 'Entrar' : 'Criar conta'}</a></p>
-        <p className="prototype">Protótipo de interface · Sem envio de dados</p>
+        <p className="alternate">{register ? 'Already have an account?' : "Don't have an account yet?"} <a href={register ? '#login' : '#register'} onClick={event => { event.preventDefault(); navigate(register ? 'login' : 'register') }}>{register ? 'Sign in' : 'Create account'}</a></p>
+        <p className="prototype">Interface prototype · No data is sent</p>
       </div>
     </section>
   </main>
