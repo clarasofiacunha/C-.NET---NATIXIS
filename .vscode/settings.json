@@ -1,0 +1,5 @@
+{
+  "editor.links": true,
+  "editor.multiCursorModifier": "alt",
+  "terminal.integrated.enableFileLinks": true
+}

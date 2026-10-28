@@ -1,0 +1,10 @@
+{
+  "name": "personal-finance-app",
+  "private": true,
+  "scripts": {
+    "frontend": "npm --prefix frontend run dev",
+    "backend": "dotnet run --project backend/PersonalFinance.Api --launch-profile http",
+    "db": "docker compose up -d",
+    "db:status": "docker compose ps"
+  }
+}

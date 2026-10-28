@@ -1,122 +1,94 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+﻿import { useState } from 'react'
+import type { FormEvent } from 'react'
 import './App.css'
 
+type Page = 'login' | 'registo'
+type Field = 'name' | 'email' | 'password' | 'confirm'
+const initial = { name: '', email: '', password: '', confirm: '' }
+const passwordRules = [
+  { label: 'Pelo menos 6 caracteres', test: (value: string) => value.length >= 6 },
+  { label: 'Uma letra maiúscula e uma minúscula', test: (value: string) => /[A-Z]/.test(value) && /[a-z]/.test(value) },
+  { label: 'Um número', test: (value: string) => /\d/.test(value) },
+  { label: 'Um símbolo (ex.: !, @, #)', test: (value: string) => /[^a-zA-Z0-9]/.test(value) },
+]
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [page, setPage] = useState<Page>(window.location.hash === '#registo' ? 'registo' : 'login')
+  const [values, setValues] = useState(initial)
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const register = page === 'registo'
+  const errors: Record<Field, string> = {
+    name: values.name.trim().length < 2 ? 'Introduz o teu nome com pelo menos 2 caracteres.' : '',
+    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Introduz um email válido, como nome@exemplo.pt.' : '',
+    password: !values.password ? 'Introduz a tua password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'A password deve cumprir todas as regras abaixo.' : '',
+    confirm: values.confirm !== values.password || !values.confirm ? 'As passwords têm de ser iguais.' : '',
+  }
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  function navigate(next: Page) {
+    setPage(next)
+    window.history.replaceState(null, '', `#${next}`)
+    setValues(initial)
+    setTouched({})
+    setShowPassword(false)
+    setSuccess(false)
+  }
 
-      <div className="ticks"></div>
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSuccess(false)
+    const fields: Field[] = register ? ['name', 'email', 'password', 'confirm'] : ['email', 'password']
+    setTouched(Object.fromEntries(fields.map(field => [field, true])))
+    const invalid = fields.find(field => errors[field])
+    if (invalid) {
+      document.getElementById(invalid)?.focus()
+      return
+    }
+    setSuccess(true)
+  }
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  function field(key: Field, label: string, type: string, autoComplete: string, placeholder: string) {
+    const invalid = Boolean(touched[key] && errors[key])
+    return <div className="field">
+      <label htmlFor={key}>{label}</label>
+      <div className={key === 'password' ? 'password-input' : undefined}>
+        <input id={key} name={key} type={type} autoComplete={autoComplete} placeholder={placeholder}
+          required maxLength={key === 'name' ? 100 : key === 'email' ? 254 : 128}
+          value={values[key]} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : key === 'password' && register ? 'password-rules' : undefined}
+          onBlur={() => setTouched(previous => ({ ...previous, [key]: true }))}
+          onChange={event => { setValues(previous => ({ ...previous, [key]: event.target.value })); setSuccess(false) }} />
+        {key === 'password' && <button className="reveal" type="button" aria-controls="password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Ocultar' : 'Mostrar'}</button>}
+      </div>
+      {invalid && <p className="error" id={`${key}-error`}>{errors[key]}</p>}
+    </div>
+  }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  return <main className="auth-layout">
+    <aside className="intro">
+      <a className="brand" href="#login" onClick={event => { event.preventDefault(); navigate('login') }}><span className="brand-icon" aria-hidden="true">€</span> Personal Finance</a>
+      <div className="intro-copy"><span className="eyebrow">AS TUAS FINANÇAS, COM CLAREZA</span><h1>Pequenos passos.<br />Mais controlo.</h1><p>Organiza as tuas despesas, planeia o mês e aproxima-te dos teus objetivos.</p><div className="intro-detail"><span aria-hidden="true">↗</span> Um lugar para acompanhares o teu dinheiro.</div></div>
+      <small>Personal Finance · Projeto académico</small>
+    </aside>
+    <section className="form-panel" aria-labelledby="form-title">
+      <div className="form-container">
+        <nav className="page-switch" aria-label="Autenticação"><a href="#login" aria-current={!register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('login') }}>Entrar</a><a href="#registo" aria-current={register ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate('registo') }}>Criar conta</a></nav>
+        <h2 id="form-title">{register ? 'Começa por aqui.' : 'Bem-vindo de volta.'}</h2>
+        <p className="subtitle">{register ? 'Cria a tua conta e começa a organizar as tuas finanças.' : 'Entra na tua conta para acompanhar as tuas finanças.'}</p>
+        <form noValidate onSubmit={submit}>
+          {register && field('name', 'Nome', 'text', 'name', 'O teu nome')}
+          {field('email', 'Email', 'email', 'email', 'nome@exemplo.pt')}
+          {field('password', 'Password', showPassword ? 'text' : 'password', register ? 'new-password' : 'current-password', register ? 'Cria uma password' : 'A tua password')}
+          {register && <ul className="rules" id="password-rules">{passwordRules.map(rule => <li key={rule.label} className={rule.test(values.password) ? 'met' : ''}><span aria-hidden="true">{rule.test(values.password) ? '✓' : '○'}</span> {rule.label}</li>)}</ul>}
+          {register && field('confirm', 'Confirmar password', showPassword ? 'text' : 'password', 'new-password', 'Repete a password')}
+          <button className="submit" type="submit">{register ? 'Criar conta' : 'Entrar'} <span aria-hidden="true">→</span></button>
+          {success && <p className="success" role="status">Dados válidos! Este protótipo verifica o formulário; {register ? 'o registo' : 'o login'} ainda não está ligado à API.</p>}
+        </form>
+        <p className="alternate">{register ? 'Já tens conta?' : 'Ainda não tens conta?'} <a href={register ? '#login' : '#registo'} onClick={event => { event.preventDefault(); navigate(register ? 'login' : 'registo') }}>{register ? 'Entrar' : 'Criar conta'}</a></p>
+        <p className="prototype">Protótipo de interface · Sem envio de dados</p>
+      </div>
+    </section>
+  </main>
 }
 
 export default App
