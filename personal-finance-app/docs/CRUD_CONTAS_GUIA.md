@@ -84,20 +84,19 @@ Confirma:
 - `http://localhost:5185/health` — API e PostgreSQL conectados.
 - `http://localhost:5185/dev/users` — utilizadores de exemplo (apenas Development).
 
-## 6. Login temporário para testes
+## 6. Login para testes locais
 
-O módulo definitivo de autenticação ainda não foi implementado no ZIP.
-Para que o CRUD já tenha proteção por utilizador, existe um login de
-**desenvolvimento** `POST /dev/auth/login`, que usa ASP.NET Identity e devolve
-um cookie de sessão. Os endpoints `/dev/...` devolvem 404 fora de Development.
-O mecanismo definitivo de login deverá ser desenvolvido na tarefa de autenticação.
+O login definitivo está disponível em `POST /auth/login`, usa ASP.NET Identity
+e devolve um cookie de sessão (`pf.auth`). O endpoint `POST /auth/logout`
+termina a sessão atual. Os endpoints `/dev/...` continuam apenas para
+diagnóstico em ambiente Development e devolvem 404 fora de Development.
 
 No PowerShell:
 
 ```powershell
 $base = 'http://localhost:5185'
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-$login = Invoke-RestMethod -Uri "$base/dev/auth/login" -Method Post `
+$login = Invoke-RestMethod -Uri "$base/auth/login" -Method Post `
   -ContentType 'application/json' `
   -Body '{"email":"demo1@example.test","password":"Demo123!Change"}' `
   -WebSession $session

@@ -33,8 +33,8 @@ try {
     Write-Host '2. Confirmar que o CRUD exige login (401)...'
     Assert-StatusCode { Invoke-RestMethod -Uri "$BaseUrl/api/accounts" } 401
 
-    Write-Host '3. Login de desenvolvimento do demo1...'
-    $login = Invoke-RestMethod -Method Post -Uri "$BaseUrl/dev/auth/login" `
+    Write-Host '3. Login do demo1...'
+    $login = Invoke-RestMethod -Method Post -Uri "$BaseUrl/auth/login" `
         -Body (Json @{ email = 'demo1@example.test'; password = 'Demo123!Change' }) `
         -ContentType 'application/json' -WebSession $session
     if (-not $login.id) { throw 'O login nao devolveu o identificador do utilizador.' }
@@ -73,7 +73,7 @@ try {
 
     Write-Host '8. Isolamento: demo2 nao consegue consultar a conta de demo1 (404)...'
     $sessionOther = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-    Invoke-RestMethod -Method Post -Uri "$BaseUrl/dev/auth/login" `
+    Invoke-RestMethod -Method Post -Uri "$BaseUrl/auth/login" `
         -Body (Json @{ email = 'demo2@example.test'; password = 'Demo123!Change' }) `
         -ContentType 'application/json' -WebSession $sessionOther | Out-Null
     Assert-StatusCode {

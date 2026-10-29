@@ -8,24 +8,37 @@ Accept: application/json
 
 ###
 
+### Login
+POST {{PersonalFinance.Api_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo1@example.test",
+  "password": "Demo123!Change"
+}
+
+### Logout
+POST {{PersonalFinance.Api_HostAddress}}/auth/logout
+Cookie: pf.auth={{authCookie}}
+
 ### List budgets, optionally filtered by year and month
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets?year=2026&month=10
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Accept: application/json
 
 ### Get current budget alerts (80% near limit, over 100% exceeded)
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets/alerts?year=2026&month=10
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Accept: application/json
 
 ### Get a budget by ID
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Accept: application/json
 
 ### Create a monthly budget
 POST {{PersonalFinance.Api_HostAddress}}/api/budgets
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Content-Type: application/json
 
 {
@@ -37,7 +50,7 @@ Content-Type: application/json
 
 ### Replace a monthly budget
 PUT {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Content-Type: application/json
 
 {
@@ -49,14 +62,14 @@ Content-Type: application/json
 
 ### Delete a monthly budget
 DELETE {{PersonalFinance.Api_HostAddress}}/api/budgets/{{budgetId}}
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 
 ### Invalid month should return 400
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets?month=13
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Accept: application/json
 
 ### Unknown budget should return 404
 GET {{PersonalFinance.Api_HostAddress}}/api/budgets/00000000-0000-0000-0000-000000000099
-Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Cookie: pf.auth={{authCookie}}
 Accept: application/json

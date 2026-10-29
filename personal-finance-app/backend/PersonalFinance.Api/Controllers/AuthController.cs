@@ -7,7 +7,9 @@ namespace PersonalFinance.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(UserManager<AppUser> userManager) : ControllerBase
+public class AuthController(
+    UserManager<AppUser> userManager,
+    SignInManager<AppUser> signInManager) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -40,5 +42,37 @@ public class AuthController(UserManager<AppUser> userManager) : ControllerBase
             user.Name,
             user.Email
         });
+    }
+
+    [HttpPost("login")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Login(LoginRequestDto request)
+    {
+        var email = request.Email!.Trim();
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+            return Unauthorized(new { error = "Credenciais invalidas." });
+
+        var result = await signInManager.PasswordSignInAsync(
+            user, request.Password!, isPersistent: false, lockoutOnFailure: true);
+
+        if (!result.Succeeded)
+            return Unauthorized(new { error = "Credenciais invalidas ou acesso bloqueado." });
+
+        return Ok(new
+        {
+            user.Id,
+            user.Name,
+            user.Email
+        });
+    }
+
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout()
+    {
+        await signInManager.SignOutAsync();
+        return NoContent();
     }
 }
