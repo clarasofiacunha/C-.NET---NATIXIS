@@ -15,6 +15,8 @@ public sealed class AccountRequestDto
 
     [Required(ErrorMessage = "O saldo inicial e obrigatorio.")]
     [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99",
+        ParseLimitsInInvariantCulture = true,
+        ConvertValueInInvariantCulture = true,
         ErrorMessage = "O saldo inicial esta fora do intervalo permitido.")]
     public decimal? InitialBalance { get; set; }
 }
