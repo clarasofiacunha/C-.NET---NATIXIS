@@ -19,7 +19,8 @@ public sealed record UpdateBudgetRequest
 
     /// <summary>Positive spending limit for the category.</summary>
     [Range(typeof(decimal), "0.01", "9999999999999999.99",
-        ParseLimitsInInvariantCulture = true)]
+    ParseLimitsInInvariantCulture = true,
+    ConvertValueInInvariantCulture = true)]
     [TwoDecimalPlaces]
     public required decimal LimitAmount { get; init; }
 }
