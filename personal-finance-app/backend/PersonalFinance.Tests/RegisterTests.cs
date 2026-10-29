@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PersonalFinance.Api.Data;
+using PersonalFinance.Api.DTOs.Auth;
 
 namespace PersonalFinance.Tests;
 
@@ -23,7 +24,7 @@ public class RegisterTests : IClassFixture<RegisterWebApplicationFactory>
         var response = await RegisterAsync();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterResponseDto>();
         Assert.NotNull(result);
         Assert.Equal("Utilizador de Teste", result.Name);
         Assert.NotEqual(Guid.Empty, result.Id);
@@ -72,7 +73,6 @@ public class RegisterTests : IClassFixture<RegisterWebApplicationFactory>
 
     private static string NewEmail() => $"teste.{Guid.NewGuid():N}@example.com";
 
-    private sealed record RegisterResponse(Guid Id, string Name, string Email);
 }
 
 public sealed class RegisterWebApplicationFactory : WebApplicationFactory<Program>

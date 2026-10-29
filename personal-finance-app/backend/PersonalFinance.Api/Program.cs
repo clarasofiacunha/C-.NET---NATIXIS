@@ -43,6 +43,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.Configure<IdentityOptions>(options =>
 {
     options.User.RequireUniqueEmail = true;
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
 });
@@ -63,6 +66,7 @@ builder.Services
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            || builder.Environment.IsEnvironment("Testing")
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
