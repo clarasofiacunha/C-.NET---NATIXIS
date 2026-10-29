@@ -1,14 +1,23 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
 using PersonalFinance.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Permite "Checking", "Savings" e "Cash" no JSON; rejeita numeros para o tipo de conta.
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter<AccountType>(allowIntegerValues: false));
+});
+
+// Swagger - documentação e testes da API
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
-builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
@@ -18,7 +27,8 @@ builder.Services.AddCors(options =>
             "http://127.0.0.1:5173",
             "http://localhost:3000")
         .AllowAnyHeader()
-        .AllowAnyMethod());
+        .AllowAnyMethod()
+        .AllowCredentials());
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -30,16 +40,33 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.User.RequireUniqueEmail = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = false;
+});
+
 builder.Services
     .AddIdentityCore<AppUser>()
+    .AddSignInManager()
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager()
     .AddDefaultTokenProviders();
 
 builder.Services
     .AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddCookie(IdentityConstants.ApplicationScheme, options =>
     {
+        options.Cookie.Name = "pf.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
         options.Events.OnRedirectToLogin = context =>
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -55,17 +82,21 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-    app.MapOpenApi();
-
 if (args.Contains("--seed", StringComparer.OrdinalIgnoreCase))
 {
     if (!app.Environment.IsDevelopment())
-        throw new InvalidOperationException("O --seed esta disponivel apenas em ambiente Development.");
+        throw new InvalidOperationException("O --seed está dispoível apenas em ambiente Development.");
 
     using var scope = app.Services.CreateScope();
     await DemoSeeder.SeedAsync(scope.ServiceProvider);
-    app.Logger.LogInformation("Dados de demonstracao verificados/inseridos.");
+    app.Logger.LogInformation("Dados de demonstração verificados/inseridos.");
+}
+
+// Disponibilizar Swagger apenas em desenvolvimento
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseCors("LocalFrontend");
@@ -74,3 +105,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;
