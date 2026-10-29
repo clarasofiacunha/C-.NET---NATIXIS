@@ -13,7 +13,7 @@ public class AuthController(
     SignInManager<AppUser> signInManager) : ControllerBase
 {
     [HttpPost("register")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register(RegisterRequestDto request)
     {
@@ -38,16 +38,13 @@ public class AuthController(
             });
         }
 
-        return StatusCode(StatusCodes.Status201Created, new
-        {
-            user.Id,
-            user.Name,
-            user.Email
-        });
+        return StatusCode(
+            StatusCodes.Status201Created,
+            new RegisterResponseDto(user.Id, user.Name, user.Email));
     }
 
     [HttpPost("login")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(LoginRequestDto request)
     {
@@ -66,17 +63,12 @@ public class AuthController(
         if (!result.Succeeded)
             return Unauthorized(new { error = "Email ou password inválidos." });
 
-        return Ok(new
-        {
-            user.Id,
-            user.Name,
-            user.Email
-        });
+        return Ok(new LoginResponseDto(user.Id, user.Name, user.Email));
     }
 
     [Authorize]
     [HttpGet("me")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MeResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me()
     {
@@ -84,12 +76,7 @@ public class AuthController(
         if (user is null)
             return Unauthorized();
 
-        return Ok(new
-        {
-            user.Id,
-            user.Name,
-            user.Email
-        });
+        return Ok(new MeResponseDto(user.Id, user.Name, user.Email));
     }
 
     [Authorize]
