@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
+using PersonalFinance.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 // Swagger - documentação e testes da API
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
 
 builder.Services.AddCors(options =>
 {
