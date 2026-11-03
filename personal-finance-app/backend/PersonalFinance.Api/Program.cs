@@ -12,6 +12,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     // Permite "Checking", "Savings" e "Cash" no JSON; rejeita numeros para o tipo de conta.
     options.JsonSerializerOptions.Converters.Add(
         new JsonStringEnumConverter<AccountType>(allowIntegerValues: false));
+    // "Income" e "Expense" no JSON; rejeita valores numericos de enum.
     options.JsonSerializerOptions.Converters.Add(
         new JsonStringEnumConverter<TransactionType>(allowIntegerValues: false));
 });
