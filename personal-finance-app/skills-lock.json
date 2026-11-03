@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "api-and-interface-design": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-and-interface-design/SKILL.md",
+      "computedHash": "0d823e9ff32f529f21492a3fd7635fc75b43ff1eb1788d4be0974bfa42e22ae3"
+    },
+    "code-review-and-quality": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/code-review-and-quality/SKILL.md",
+      "computedHash": "895b57b6fa13a75d182472c1428621cc59fca373723c07c2372ab4ac96307186"
+    },
+    "frontend-ui-engineering": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-ui-engineering/SKILL.md",
+      "computedHash": "22ee43d0367d2c3f611585eead5f0c413bcefa947da34b25a4935726ed76533e"
+    },
+    "interview-me": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/interview-me/SKILL.md",
+      "computedHash": "4229002dd862e6e037c8a01c3e31d9af097465c58b2c3611912edb2af005f303"
+    },
+    "planning-and-task-breakdown": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/planning-and-task-breakdown/SKILL.md",
+      "computedHash": "0dc14a1402cdabd376f2d81d2225fcb4a18ee63d58b945ff83affeb024285b8f"
+    },
+    "security-and-hardening": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security-and-hardening/SKILL.md",
+      "computedHash": "f79bc2010272830c6d65400cfa5e860edc37af8607f1439a0a88aa3cea111ef1"
+    },
+    "test-driven-development": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "computedHash": "3685f4d68f60c5fe97674a069bf589e6723e5196961fca68a26d40b319a4841d"
+    }
+  }
+}
