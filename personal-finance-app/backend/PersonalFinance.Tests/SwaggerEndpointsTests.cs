@@ -70,6 +70,40 @@ private static WebApplicationFactory<Program> CreateFactory(
     }
 
     [Fact]
+    public async Task SwaggerJson_DocumentsAllFiveTransactionsOperations()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/swagger/v1/swagger.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var paths = document.RootElement.GetProperty("paths");
+        var collection = paths.GetProperty("/api/transactions");
+        var item = paths.GetProperty("/api/transactions/{id}");
+
+        Assert.True(collection.TryGetProperty("get", out _));
+        Assert.True(collection.TryGetProperty("post", out _));
+        Assert.True(item.TryGetProperty("get", out _));
+        Assert.True(item.TryGetProperty("put", out _));
+        Assert.True(item.TryGetProperty("delete", out _));
+    }
+
+    [Fact]
+    public async Task GetTransactions_WithoutAuthentication_Returns401()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using var response = await client.GetAsync("/api/transactions");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetAccounts_WithoutAuthentication_Returns401()
     {
         using var factory = CreateFactory();

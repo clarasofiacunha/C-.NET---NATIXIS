@@ -2,7 +2,7 @@
 
 Aplicação web para **gestão de finanças pessoais**, desenvolvida em equipa. O objetivo é permitir que cada utilizador acompanhe contas, receitas, despesas, orçamentos mensais e metas de poupança num único local.
 
-> **Estado do projeto:** a estrutura abaixo é a estrutura **prevista** para o desenvolvimento. Alguns ficheiros e funcionalidades poderão ainda não existir, conforme a fase em que a equipa se encontra. A secção [Estrutura e responsabilidades das pastas](#5-estrutura-e-responsabilidades-das-pastas) distingue o setup inicial do trabalho futuro.
+> **Estado do projeto:** o backend já inclui autenticação, CRUD de contas, CRUD de transações, CRUD de orçamentos, alertas de orçamento, Swagger, testes xUnit, migrations e dados de demonstração. O **frontend ainda contém o ecrã inicial do Vite/React**, não uma interface financeira completa. As categorias, metas e dados de dashboard existem na base de dados/rotas de diagnóstico, mas isso **não significa que os respetivos módulos públicos estejam concluídos**.
 
 ## Índice
 
@@ -12,11 +12,11 @@ Aplicação web para **gestão de finanças pessoais**, desenvolvida em equipa. 
 4. [Preparar e executar o projeto pela primeira vez](#4-preparar-e-executar-o-projeto-pela-primeira-vez)
 5. [Estrutura e responsabilidades das pastas](#5-estrutura-e-responsabilidades-das-pastas)
 6. [Como trabalhar no projeto](#6-como-trabalhar-no-projeto)
-7. [Testar e validar a instalação](#7-testar-e-validar-a-instalação)
+7. [Utilizar a API, o Swagger e os testes](#7-utilizar-a-api-o-swagger-e-os-testes)
 8. [Problemas frequentes e soluções](#8-problemas-frequentes-e-soluções)
 9. [Funcionalidades planeadas](#9-funcionalidades-planeadas)
 10. [Como criar a estrutura inicial (apenas uma vez)](#10-como-criar-a-estrutura-inicial-apenas-uma-vez)
-11. [Checklist de instalação](#11-checklist-de-instalação)
+11. [Checklist de instalação e execução](#11-checklist-de-instalação-e-execução)
 
 ---
 
@@ -37,9 +37,9 @@ A **Personal Finance App** será uma aplicação web que permite:
 ### Como funciona?
 
 ```text
-Navegador (React)
+Navegador (React ou Swagger UI)
     |
-    | Pedido HTTP /api/...
+    | Pedido HTTP /auth/... ou /api/...
     v
 Backend (ASP.NET Core Web API)
     |
@@ -61,11 +61,14 @@ Em desenvolvimento, React e .NET executam no computador; o PostgreSQL executa nu
 | **Vite** | Iniciar e compilar o frontend | A definida em `frontend/package.json` |
 | **ESLint** | Analisar problemas e manter regras de código | A definida no frontend |
 | **C# / ASP.NET Core** | Criar a API e as regras de negócio | **.NET SDK 10** |
-| **Entity Framework Core** | Ler, gravar e atualizar dados | **EF Core 10** |
+| **Entity Framework Core** | Ler, gravar e atualizar dados | **EF Core 8.x** no projeto atual |
 | **PostgreSQL** | Guardar dados | **PostgreSQL 17** via Docker |
 | **Docker Desktop / Compose** | Executar a base de dados localmente | Versão estável |
 | **Git e GitHub** | Partilhar e versionar código | Versão estável |
 | **xUnit** | Executar testes do backend | A definida no projeto de testes |
+| **Swagger / Swashbuckle** | Documentar e experimentar os endpoints HTTP em desenvolvimento | Configurado em `Program.cs` |
+| **ASP.NET Core Identity** | Registo, autenticação por cookie e proteção dos dados | Configurado no backend |
+| **DBeaver** (opcional) | Consultar visualmente as tabelas PostgreSQL | Cliente SQL; não substitui a API |
 
 > Não precisas de instalar o PostgreSQL diretamente no Windows: o Docker fará isso dentro de um contentor.
 
@@ -192,11 +195,11 @@ Se algum comando não funcionar, resolve esse problema antes de avançar.
 1. Abre o repositório de código no GitHub (não o quadro de tarefas).
 2. Clica no botão **Code → HTTPS** e copia o URL.
 3. Abre o PowerShell na pasta onde queres guardar o projeto.
-4. Executa (substitui o URL de exemplo pelo URL **real**):
+4. Executa (se ainda não tiveres o repositório clonado):
 
 ```powershell
-git clone https://github.com/UTILIZADOR/personal-finance-app.git
-cd personal-finance-app
+git clone https://github.com/clarasofiacunha/C-.NET---NATIXIS.git
+cd C-.NET---NATIXIS\personal-finance-app
 ```
 
 Se o repositório for privado, a tua conta GitHub precisa de ter acesso. O Git pode pedir autenticação através do navegador ou gestor de credenciais.
@@ -215,13 +218,14 @@ Abre `.env` no VS Code. O conteúdo deve seguir este modelo:
 
 ```dotenv
 POSTGRES_DB=personal_finance
-POSTGRES_USER=personal_dev
-POSTGRES_PASSWORD=dev_only_change_me
+POSTGRES_USER=personal_finance_user
+POSTGRES_PASSWORD=change_this_password
+POSTGRES_PORT=5432
 ```
 
-Altera `POSTGRES_PASSWORD` para uma password tua, usada apenas no desenvolvimento local. **Não partilhes o teu `.env` nem o publiques no GitHub.**
+Altera `POSTGRES_PASSWORD` para uma password tua, usada apenas no desenvolvimento local. Estes valores são os exemplos do ficheiro `.env.example`; se o teu PostgreSQL já foi inicializado com outro utilizador, utiliza **as credenciais efetivas** da tua base de dados. **Não partilhes o `.env` nem o publiques no GitHub.**
 
-Se não existe `.env.example` ou `docker-compose.yml`, o setup do repositório ainda não está concluído: pede ao responsável pelo setup para adicionar esses ficheiros (ver [secção 10](#10-como-criar-a-estrutura-inicial-apenas-uma-vez)).
+O repositório analisado já inclui `.env.example` e `docker-compose.yml`. Se não os encontrares, confirma que abriste a raiz correta e que tens a versão atualizada da branch antes de prosseguir.
 
 ### Passo 3 — Ligar o PostgreSQL
 
@@ -242,22 +246,20 @@ Confirma que existe `backend/PersonalFinance.Api/PersonalFinance.Api.csproj` e, 
 
 ```powershell
 dotnet restore PersonalFinance.slnx
-dotnet tool restore
+dotnet tool restore --tool-manifest ./dotnet-tools.json
 ```
 
-O segundo comando instala as ferramentas .NET locais definidas no ficheiro `.config/dotnet-tools.json`, incluindo `dotnet-ef` **se a equipa já o tiver adicionado**.
+O segundo comando restaura o `dotnet-ef` **8.0.33** definido no manifesto `dotnet-tools.json` da raiz. O backend utiliza .NET 10 como *target framework*, mas as dependências EF Core/Npgsql deste código estão na versão **8.x**. Não alteres versões de pacotes isoladamente sem coordenação com a equipa.
 
 **Configurar a ligação à base de dados sem guardar passwords no código:**
 
-```powershell
-dotnet user-secrets init --project backend/PersonalFinance.Api
-```
-
-Depois, executa numa **só linha**, substituindo `A_TUA_PASSWORD` pelo valor utilizado em `.env`:
+O ficheiro `.csproj` do backend **já contém** `UserSecretsId`, por isso não é necessário executar `dotnet user-secrets init` novamente. Define a ligação numa única linha, utilizando os valores **reais** da tua base de dados:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" 'Host=localhost;Port=5432;Database=personal_finance;Username=personal_dev;Password=dev_only_change_me' --project backend/PersonalFinance.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" 'Host=localhost;Port=5432;Database=personal_finance;Username=personal_finance_user;Password=A_TUA_PASSWORD' --project backend/PersonalFinance.Api
 ```
+
+Se usares outra porta, username ou base de dados, adapta também a connection string. O DBeaver deve usar esses mesmos dados de ligação.
 
 Usamos **User Secrets** para a password não aparecer no código versionado. Cada colega deve configurar os seus próprios segredos na respetiva máquina.
 
@@ -267,20 +269,21 @@ Usamos **User Secrets** para a password não aparecer no código versionado. Cad
 dotnet ef database update --project backend/PersonalFinance.Api --startup-project backend/PersonalFinance.Api
 ```
 
-Este comando exige que a equipa já tenha criado e versionado uma migration inicial na pasta `Migrations/`. **Não cries uma nova migration `InitialCreate` em cada computador.** Se ainda não existir nenhuma migration, consulta a [secção 10](#10-como-criar-a-estrutura-inicial-apenas-uma-vez) ou contacta o responsável pelo backend.
+A migration inicial **já existe** em `backend/PersonalFinance.Api/Migrations/`. Cada pessoa deve aplicar as migrations do repositório; **não** criar novamente `InitialCreate`. O CRUD de transações reutiliza a tabela existente, pelo que não precisa de uma migration nova.
 
-**Popular a base de dados com dados fictícios (opcional):**
+**Popular a base de dados com dados fictícios (opcional, apenas em desenvolvimento):**
 
-Após aplicar as migrations, e desde que o `DemoSeeder` esteja
-implementado e registado no `Program.cs`, executa na raiz:
+O `DemoSeeder` **já está implementado**. Depois de aplicar as migrations, executa, com a porta da API livre:
 
 ```powershell
-dotnet run --project backend/PersonalFinance.Api -- --seed
+dotnet run --project backend/PersonalFinance.Api --launch-profile http -- --seed
 ```
+
+Este comando aplica o seed **e mantém a API em execução**. Termina-a com `Ctrl + C` se quiseres voltar a iniciá-la sem `--seed`. Não precisas de repetir o seed em cada arranque.
 
 O seed permite criar dados de demonstração, incluindo:
 
-- Utilizadores fictícios com diferentes perfis financeiros.
+- **4 utilizadores** fictícios (`demo1@example.test` a `demo4@example.test`), com password de desenvolvimento `Demo123!Change`.
 - Contas à ordem e contas poupança.
 - Categorias de receitas e despesas.
 - Transações distribuídas ao longo de 12 meses.
@@ -308,7 +311,7 @@ npm ci
 cd ..
 ```
 
-`npm ci` utiliza o ficheiro `package-lock.json` versionado e instala as dependências nas versões combinadas pela equipa. Se o frontend ainda não tiver `package-lock.json`, o responsável pelo setup deve executar `npm install` e versionar esse ficheiro.
+`npm ci` utiliza o ficheiro `package-lock.json` versionado e instala as dependências nas versões combinadas pela equipa. Neste projeto o `package-lock.json` já existe; executa `npm ci`.
 
 ### Passo 6 — Iniciar a aplicação (três terminais)
 
@@ -321,7 +324,7 @@ docker compose up -d
 **Terminal 2 — Backend** (na raiz):
 
 ```powershell
-dotnet run --project backend/PersonalFinance.Api -- --urls http://localhost:5000
+dotnet run --project backend/PersonalFinance.Api --launch-profile http
 ```
 
 **Terminal 3 — Frontend**:
@@ -335,21 +338,21 @@ Deixa os terminais do backend e frontend abertos enquanto estiveres a usar a apl
 
 ### Passo 7 — Abrir e confirmar
 
-- **Frontend:** <http://localhost:5173>
-- **Teste de ligação da API à base de dados:** <http://localhost:5000/api/health>
+- **Frontend (ainda com o template inicial do Vite):** <http://localhost:5173>
+- **API:** <http://localhost:5185/> — devolve o estado geral da API.
+- **Health check:** <http://localhost:5185/health> — testa também a ligação ao PostgreSQL.
+- **Swagger UI:** <http://localhost:5185/swagger> — documentação e testes interativos (apenas Development).
 
-Quando o endpoint `/api/health` já estiver implementado, a resposta esperada é:
+Resposta esperada de `GET /health` quando a API e o PostgreSQL estão operacionais:
 
 ```json
 {
-  "status": "ok",
+  "api": "online",
   "database": "connected"
 }
 ```
 
-Se o React já tiver o teste de integração descrito no setup inicial, também poderá apresentar `System status: ok - connected`.
-
-> **Nota:** estas são verificações **esperadas quando a equipa tiver implementado esses ficheiros/endpoints**. O README não significa que a autenticação, dashboard ou outras páginas já estejam disponíveis.
+O endpoint `/health` pode devolver **503** quando a API está online mas o PostgreSQL está indisponível. Um erro de ligação ao endereço indica que a própria API não está a ouvir nessa porta. O frontend ainda não tem os módulos de gestão de finanças implementados; o Swagger permite experimentar diretamente o backend.
 
 ### Passo 8 — Parar tudo
 
@@ -370,106 +373,92 @@ Não precisas de reinstalar tudo. Abre o Docker Desktop, abre o projeto e repete
 
 ## 5. Estrutura e responsabilidades das pastas
 
-A estrutura abaixo mostra o destino pretendido para o projeto. **Nem todos os ficheiros são gerados automaticamente**, e alguns surgirão apenas quando forem implementadas as respetivas funcionalidades.
+Esta é uma **visão simplificada da estrutura que já existe**, sem incluir `bin/`, `obj/`, `node_modules/` e ficheiros gerados automaticamente:
 
 ```text
-personal-finance-app/                  # PASTA PRINCIPAL / RAIZ
-│
-├── backend/                           # Código C# e testes
-│   ├── PersonalFinance.Api/           # Projeto ASP.NET Core Web API
-│   │   ├── Controllers/               # Endpoints HTTP (podem surgir por módulo)
-│   │   │   ├── AuthController.cs       # [FUTURO] registo/login/perfil (se usado)
-│   │   │   ├── AccountsController.cs   # [FUTURO] gestão de contas
-│   │   │   ├── TransactionsController.cs # [FUTURO] receitas/despesas
-│   │   │   └── ...
-│   │   ├── Services/                  # [FUTURO] regras de negócio
-│   │   ├── DTOs/                      # [FUTURO] formatos de entrada/saída da API
-│   │   ├── Models/                    # Entidades, por exemplo Account.cs
-│   │   ├── Data/                      # AppDbContext e configurações EF Core
-│   │   ├── Migrations/                # Criada pelo EF Core na primeira migration
-│   │   ├── Program.cs                 # Arranque/configuração da API
-│   │   ├── appsettings.json           # Configuração não secreta
-│   │   └── PersonalFinance.Api.csproj # Dependências do backend
-│   │
-│   └── PersonalFinance.Tests/         # Testes automatizados em xUnit
+personal-finance-app/
+├── backend/
+│   ├── PersonalFinance.Api/
+│   │   ├── Controllers/
+│   │   │   ├── AuthController.cs          # Registo, login, perfil e logout
+│   │   │   ├── AccountsController.cs      # CRUD de contas
+│   │   │   ├── TransactionsController.cs  # CRUD de transações e filtros
+│   │   │   ├── BudgetsController.cs       # CRUD de orçamentos e alertas
+│   │   │   ├── HealthController.cs        # / e /health
+│   │   │   └── DevelopmentController.cs   # Endpoints /dev/*
+│   │   ├── DTOs/
+│   │   │   ├── Auth/
+│   │   │   ├── Accounts/
+│   │   │   ├── Transactions/
+│   │   │   └── Budgets/
+│   │   ├── Services/                      # Lógica de orçamentos
+│   │   ├── Models/                        # Entidades Account, Category, etc.
+│   │   ├── Data/
+│   │   │   ├── AppDbContext.cs            # EF Core + tabelas/relações
+│   │   │   └── DemoSeeder.cs             # Dados fictícios de desenvolvimento
+│   │   ├── Migrations/                   # InitialCreate existente
+│   │   ├── Properties/launchSettings.json
+│   │   ├── Program.cs                    # Serviços, auth, CORS e Swagger
+│   │   └── PersonalFinance.Api.csproj
+│   └── PersonalFinance.Tests/            # Testes xUnit
+│       ├── RegisterTests.cs / LoginTests.cs
+│       ├── AccountsControllerTests.cs
+│       ├── TransactionsControllerTests.cs
+│       ├── BudgetRequestValidationTests.cs
+│       ├── BudgetAlertClassifierTests.cs
+│       ├── SwaggerEndpointsTests.cs
 │       └── PersonalFinance.Tests.csproj
-│
-├── frontend/                          # Interface React + TypeScript
-│   ├── src/
-│   │   ├── components/                # [FUTURO] componentes reutilizáveis
-│   │   ├── pages/                     # [FUTURO] páginas: login, dashboard...
-│   │   ├── features/                  # [FUTURO] organização por funcionalidades
-│   │   ├── services/                  # [FUTURO] chamadas à API
-│   │   ├── hooks/                     # [FUTURO] hooks React personalizados
-│   │   ├── types/                     # [FUTURO] interfaces/tipos TypeScript
-│   │   ├── App.tsx                    # Componente principal
-│   │   └── main.tsx                   # Entrada da aplicação React
-│   ├── public/                        # Ficheiros públicos estáticos
-│   ├── package.json                   # Dependências/comandos npm
-│   ├── package-lock.json              # Versões exatas das dependências
-│   └── vite.config.ts                 # Configuração Vite/proxy para a API
-│
-├── docs/                              # [FUTURO] diagramas e documentação
-├── .github/
-│   └── workflows/
-│       └── ci.yml                     # [QUANDO CONFIGURADO] testes automáticos
-├── .config/
-│   └── dotnet-tools.json              # [QUANDO CONFIGURADO] ferramentas .NET locais
-├── docker-compose.yml                # PostgreSQL em Docker
-├── .env.example                      # Exemplo SEM passwords reais
-├── .env                              # Configuração local (NÃO enviar ao Git)
-├── .gitignore                        # Ficheiros a não enviar para Git
-├── PersonalFinance.slnx              # Solução .NET (SDK 10)
-└── README.md                          # Este guia
+├── frontend/
+│   ├── src/                              # App.tsx, estilos e assets iniciais
+│   ├── package.json
+│   └── vite.config.ts                    # Configuração Vite (sem proxy /api)
+├── scripts/
+│   ├── test-accounts.ps1
+│   └── test-transactions.ps1
+├── docs/                                 # Guias de setup, contas e transações
+├── docker-compose.yml                   # PostgreSQL
+├── .env.example                         # Variáveis de ambiente de exemplo
+├── .env                                 # Valores privados locais (não versionar)
+├── dotnet-tools.json                    # Manifesto de ferramentas (.NET EF)
+├── PersonalFinance.slnx
+└── README.md
 ```
 
-### Backend: o que vai em cada pasta?
+### Backend: que responsabilidade tem cada parte?
 
-| Pasta ou ficheiro | O que é? | Exemplo |
+| Pasta/ficheiro | Função | Exemplo |
 | --- | --- | --- |
-| `Controllers/` | Recebe os pedidos do React e devolve respostas HTTP. | `GET /api/accounts` |
-| `Services/` | Contém cálculos e regras financeiras. | Calcular o orçamento já utilizado. |
-| `DTOs/` | Define os dados que a API aceita e devolve. | `CreateTransactionDto` |
-| `Models/` | Representa os objetos do negócio. | `Account`, `Transaction`, `Budget` |
-| `Data/` | Configura o Entity Framework e a ligação aos dados. | `AppDbContext` |
-| `Migrations/` | Guarda o histórico de alterações à estrutura da base de dados. | `InitialCreate` |
-| `Program.cs` | Regista serviços e configura as rotas/middleware. | API, DbContext, OpenAPI |
-| `PersonalFinance.Tests/` | Contém testes do comportamento esperado. | Testar cálculo de saldo. |
+| `Controllers/` | Expõe as rotas HTTP e aplica as regras de acesso. | `POST /api/transactions` |
+| `DTOs/` | Define os contratos JSON de entrada e saída e as validações. | `TransactionRequestDto` |
+| `Services/` | Isola a lógica de negócio que não deve ficar no controller. | `BudgetService` |
+| `Models/` | Define entidades, enums e relações da aplicação. | `FinanceTransaction`, `TransactionType` |
+| `Data/AppDbContext.cs` | Configura o Entity Framework Core/PostgreSQL. | Tabelas `Accounts` e `Transactions` |
+| `Data/DemoSeeder.cs` | Insere utilizadores e dados fictícios locais. | `--seed` |
+| `Migrations/` | Histórico versionado do esquema da base de dados. | `InitialCreate` |
+| `Program.cs` | Configura Identity, cookies, CORS, DI, JSON e Swagger. | Autenticação e `AddSwaggerGen()` |
+| `PersonalFinance.Tests/` | Testes automatizados isolados, incluindo integração do Swagger. | `TransactionsControllerTests` |
+| `scripts/` | Testes HTTP de ponta a ponta contra a API em execução. | `test-transactions.ps1` |
 
 **Regras importantes:**
 
-- Os controllers devem ser leves: operações complexas pertencem aos serviços.
-- Os DTOs impedem que a interface dependa diretamente de todas as propriedades dos modelos internos.
-- Cada operação sobre contas/transações deverá verificar se os dados pertencem ao utilizador autenticado.
-- Valores monetários em C# devem usar `decimal` (e no PostgreSQL, um tipo decimal apropriado).
-- **Não guardes passwords nem tokens no código ou no Git.**
+- Os pedidos de contas, transações e orçamentos são associados ao **utilizador autenticado**, não a um `userId` enviado no JSON.
+- Os DTOs evitam expor diretamente as entidades internas e aplicam validações.
+- Para valores financeiros utiliza-se `decimal` em C#.
+- Nunca guardar passwords, cookies de sessão, connection strings ou `.env` no repositório.
+- O frontend atual é apenas um ponto de partida; **não apresenta ainda uma interface funcional para estes CRUDs**.
+- O `vite.config.ts` atual **não configura um proxy `/api`**. Ao adicionar chamadas HTTP no React, configurar o URL da API e enviar os cookies (`credentials: 'include'`), respeitando as origens CORS previstas.
 
-### Frontend: o que vai em cada pasta?
+### Ficheiros da raiz
 
-| Pasta ou ficheiro | O que é? | Exemplo |
-| --- | --- | --- |
-| `components/` | Peças reutilizáveis da interface. | Botões, inputs, cartões. |
-| `pages/` | Ecrãs inteiros. | Login, dashboard, transações. |
-| `features/` | Código agrupado por módulo funcional. | `transactions/`, `budgets/` |
-| `services/` | Funções que fazem pedidos à API. | `accountsApi.ts` |
-| `hooks/` | Lógica React reutilizável. | `useAccounts.ts` |
-| `types/` | Definições de tipos e interfaces. | `Transaction.ts` |
-| `App.tsx` | Organiza a aplicação/rotas principais. | Layout geral. |
-| `vite.config.ts` | Configura a execução do frontend. | Proxy `/api` → `localhost:5000`. |
-
-As pastas `Services/`, `DTOs/`, `features/` e outras podem estar **vazias no início**. Isso é normal: receberão ficheiros quando as funcionalidades forem desenvolvidas. Por padrão, o Git não guarda pastas vazias; podem usar um `.gitkeep` se precisarem de as mostrar no repositório.
-
-### Ficheiros na raiz: por que existem?
-
-| Ficheiro | Função |
+| Ficheiro | Para que serve |
 | --- | --- |
-| `README.md` | Ensina a preparar, executar e compreender o projeto. |
-| `PersonalFinance.slnx` | Agrupa os projetos de backend/testes. |
-| `docker-compose.yml` | Descreve o contentor de PostgreSQL. |
-| `.env.example` | Indica as variáveis necessárias, com valores de exemplo. |
-| `.env` | Contém configurações **locais e privadas**; não deve ir para o Git. |
-| `.gitignore` | Impede o envio de passwords, `node_modules`, `bin/obj` etc. |
-| `.github/workflows/ci.yml` | Executa validações automaticamente no GitHub quando configurado. |
+| `README.md` | Este manual de instalação e utilização. |
+| `PersonalFinance.slnx` | Agrupa os projetos .NET. |
+| `docker-compose.yml` | Define o serviço PostgreSQL (`db`) e o volume. |
+| `.env.example` | Exemplo versionável das variáveis usadas pelo Docker. |
+| `.env` | Configuração privada da máquina; não partilhar. |
+| `dotnet-tools.json` | Define `dotnet-ef` 8.0.33. |
+| `.gitignore` | Exclui segredos e ficheiros de compilação. |
 
 ---
 
@@ -477,30 +466,26 @@ As pastas `Services/`, `DTOs/`, `features/` e outras podem estar **vazias no in�
 
 ### 6.1. Começar a trabalhar
 
-Antes de desenvolver, obtém as alterações mais recentes da equipa. Por exemplo, se estiverem a usar `develop` como branch de integração:
+Antes de desenvolver, guarda ou confirma o teu trabalho com `git status`, muda para a branch base combinada pela equipa (por exemplo, `main`) e obtém as alterações mais recentes:
 
 ```powershell
-git switch develop
-git pull origin develop
+git switch main
+git pull origin main
+git switch -c feature/nome-da-tarefa
 ```
 
-Para trabalhar numa nova funcionalidade, cria uma branch própria:
+Se já tens uma branch própria, **não voltes a criá-la**: utiliza `git switch feature/nome-da-tarefa` e atualiza-a em coordenação com a equipa.
+
+Depois de implementar e executar os testes:
 
 ```powershell
-git switch -c feature/accounts
-```
-
-Faz as alterações, executa os testes e envia o trabalho:
-
-```powershell
+git status
 git add .
-git commit -m "feat: add accounts management"
-git push -u origin feature/accounts
+git commit -m "docs: update API and testing instructions"
+git push -u origin feature/nome-da-tarefa
 ```
 
-No GitHub, abre um **Pull Request** de `feature/accounts` para `develop` e pede revisão a outro elemento.
-
-> Se o repositório ainda não utilizar `develop`, combina primeiro a estratégia de branches com a equipa. Não executes comandos que substituam trabalho existente.
+Abre um **Pull Request** para a branch de integração acordada (por exemplo, `main` ou `develop`) e pede revisão. Confirma sempre a branch de destino antes do merge.
 
 ### 6.2. Convenções simples
 
@@ -519,49 +504,293 @@ O **GitHub Project** organiza tarefas; as **Issues** descrevem o trabalho e os *
 
 ---
 
-## 7. Testar e validar a instalação
+## 7. Utilizar a API, o Swagger e os testes
 
-Executa estes comandos **na raiz do projeto**, exceto quando indicado:
+> Todos os exemplos abaixo assumem **PowerShell no Windows** e que o terminal está na **raiz `personal-finance-app`**, exceto quando indicado. O endereço padrão da API é `http://localhost:5185` (perfil `http` em `launchSettings.json`).
 
-**Backend — compilar:**
+### 7.1. Iniciar e verificar a API
 
-```powershell
-dotnet build PersonalFinance.slnx
-```
-
-**Backend — testes unitários:**
+**Terminal 1 — PostgreSQL:**
 
 ```powershell
-dotnet test PersonalFinance.slnx
-```
-
-**Frontend — analisar o código com ESLint:**
-
-```powershell
-cd frontend
-npm run lint
-```
-
-**Frontend — criar o build:**
-
-```powershell
-npm run build
-cd ..
-```
-
-**Base de dados — verificar o contentor:**
-
-```powershell
+docker compose up -d
 docker compose ps
 ```
 
-**Integração — se já existir o endpoint de health:**
+**Terminal 2 — API .NET:**
 
-Abre <http://localhost:5000/api/health> enquanto a API está a executar. A resposta esperada é `status: ok` e `database: connected`.
+```powershell
+dotnet run --project backend/PersonalFinance.Api --launch-profile http
+```
 
-Se o `npm run lint` não existir, confirma que o frontend foi criado com ESLint e que o respetivo script está definido em `frontend/package.json`.
+Mantém o terminal da API aberto. Confirma no navegador:
 
-A pipeline `.github/workflows/ci.yml`, quando adicionada, deverá automatizar pelo menos a compilação e os testes.
+- `http://localhost:5185/` — API online.
+- `http://localhost:5185/health` — ligação ao PostgreSQL.
+- `http://localhost:5185/swagger` — Swagger UI.
+- `http://localhost:5185/swagger/v1/swagger.json` — especificação OpenAPI em JSON.
+
+Se a base de dados ainda estiver vazia, aplica as migrations e executa o seed de acordo com a [secção 4](#4-preparar-e-executar-o-projeto-pela-primeira-vez). **A ligação no DBeaver confirma o PostgreSQL, mas não inicia a API .NET.**
+
+### 7.2. O que é o Swagger e como o utilizar
+
+O **Swagger UI** é uma interface web para ler a documentação gerada pela API e enviar pedidos HTTP sem criar páginas React nem instalar Postman.
+
+1. Inicia a API com `--launch-profile http` e abre `http://localhost:5185/swagger`.
+2. Expande um endpoint (por exemplo, `POST /auth/login`).
+3. Clica em **Try it out**.
+4. Preenche os parâmetros ou o corpo JSON indicado na documentação.
+5. Clica em **Execute**.
+6. Consulta **Request URL**, **Server response**, **Response body** e **Response code**.
+7. Para testar uma rota protegida, faz primeiro login no mesmo Swagger (ver [7.3](#73-autenticação-e-sessão)). O navegador guarda o cookie devolvido pelo login e envia-o nos pedidos seguintes à mesma origem.
+
+O Swagger está configurado **apenas em Development**; não fica disponível em Production. No código atual, a autenticação é feita por **cookie de sessão**, não por token JWT. Não é necessário inventar ou introduzir um Bearer token no Swagger.
+
+### 7.3. Autenticação e sessão
+
+As rotas de autenticação ficam em `/auth` (sem o prefixo `/api`).
+
+| Método | Endpoint | Função | Sucesso |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | Registar utilizador | `201` |
+| `POST` | `/auth/login` | Iniciar sessão, recebe cookie `pf.auth` | `200` |
+| `GET` | `/auth/me` | Consultar dados do utilizador autenticado | `200` |
+| `POST` | `/auth/logout` | Terminar sessão | `204` |
+
+**Exemplo de registo** (Swagger → `POST /auth/register` → Try it out):
+
+```json
+{
+  "name": "Utilizador Teste",
+  "email": "utilizador.teste@example.test",
+  "password": "PasswordTeste123!"
+}
+```
+
+**Exemplo de login** (Swagger → `POST /auth/login`):
+
+```json
+{
+  "email": "demo1@example.test",
+  "password": "Demo123!Change"
+}
+```
+
+As contas `demo1@example.test` a `demo4@example.test` são criadas pelo `--seed`; não existem obrigatoriamente antes desse comando. A password acima é **exclusivamente de desenvolvimento**.
+
+Depois de um `200` no login, testa `GET /auth/me`, `GET /api/accounts` ou `GET /api/transactions` no mesmo navegador. O backend aplica `[Authorize]` aos CRUDs. Sem sessão, devolve `401`; os recursos de outro utilizador são ocultados (`404`). O cookie `pf.auth` é `HttpOnly`, por isso não se deve tentar lê-lo com JavaScript.
+
+**Alternativa em PowerShell** (a sessão conserva o cookie):
+
+```powershell
+$base = 'http://localhost:5185'
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+
+$login = Invoke-RestMethod -Method Post -Uri "$base/auth/login" `
+  -ContentType 'application/json' `
+  -Body '{"email":"demo1@example.test","password":"Demo123!Change"}' `
+  -WebSession $session
+
+$login
+Invoke-RestMethod -Uri "$base/auth/me" -WebSession $session
+Invoke-RestMethod -Uri "$base/api/accounts" -WebSession $session
+```
+
+Nos pedidos posteriores pelo PowerShell, acrescenta `-WebSession $session`. No frontend React, as chamadas com `fetch` devem incluir `credentials: 'include'` se estiverem numa origem diferente da API e a configuração CORS for compatível.
+
+### 7.4. CRUD de contas financeiras
+
+| Método | Endpoint | Resultado esperado |
+| --- | --- | --- |
+| `GET` | `/api/accounts` | `200` — contas do utilizador autenticado |
+| `GET` | `/api/accounts/{id}` | `200` — conta encontrada |
+| `POST` | `/api/accounts` | `201` — conta criada |
+| `PUT` | `/api/accounts/{id}` | `200` — conta atualizada |
+| `DELETE` | `/api/accounts/{id}` | `204` — conta eliminada, se não tiver transações |
+
+Exemplo JSON para `POST` ou `PUT`:
+
+```json
+{
+  "name": "Poupança de emergência",
+  "type": "Savings",
+  "initialBalance": 250.75
+}
+```
+
+Tipos de conta aceites: `Checking`, `Savings` e `Cash`. O nome é obrigatório (até 120 caracteres) e o saldo inicial é um número decimal com, no máximo, duas casas. O ID da conta é um **GUID**. Não é permitido apagar uma conta que tem transações associadas: a API responde `409 Conflict`.
+
+Depois de criares uma conta no Swagger, copia o `id` devolvido e utiliza-o nos endpoints `GET /api/accounts/{id}`, `PUT` e `DELETE`.
+
+### 7.5. CRUD de transações (receitas e despesas)
+
+| Método | Endpoint | Resultado esperado |
+| --- | --- | --- |
+| `GET` | `/api/transactions` | `200` — transações do utilizador |
+| `GET` | `/api/transactions/{id}` | `200` — transação encontrada |
+| `POST` | `/api/transactions` | `201` — transação criada |
+| `PUT` | `/api/transactions/{id}` | `200` — transação atualizada |
+| `DELETE` | `/api/transactions/{id}` | `204` — transação eliminada |
+
+**Filtros opcionais de `GET /api/transactions`:**
+
+| Parâmetro | Exemplo | Significado |
+| --- | --- | --- |
+| `from` | `2026-11-01` | Data inicial, inclusive (UTC) |
+| `to` | `2026-11-30` | Data final, inclusive (UTC) |
+| `type` | `Expense` ou `Income` | Apenas despesas ou receitas |
+| `accountId` | GUID de conta | Apenas transações dessa conta |
+| `categoryId` | GUID de categoria | Apenas transações dessa categoria |
+
+Exemplo: `GET /api/transactions?from=2026-11-01&to=2026-11-30&type=Expense`. Por omissão, os resultados são ordenados **do mais recente para o mais antigo**.
+
+**JSON para criar/editar uma despesa:**
+
+```json
+{
+  "accountId": "COLOCAR_GUID_DA_CONTA",
+  "categoryId": "COLOCAR_GUID_DE_CATEGORIA_EXPENSE",
+  "amount": 24.50,
+  "type": "Expense",
+  "date": "2026-11-03T12:30:00Z",
+  "description": "Supermercado"
+}
+```
+
+Substitui os dois campos pelos **GUIDs verdadeiros**, pois os valores de exemplo acima são marcadores e não GUIDs válidos. Para descobrir os IDs, utiliza `GET /api/accounts` e, enquanto o CRUD público de categorias não estiver disponível, `GET /dev/users/{userId}/categories` (apenas Development; ver [7.7](#77-base-de-dados-dbeaver-e-endpoints-de-desenvolvimento)).
+
+**Regras implementadas:**
+
+- `Income` = receita; `Expense` = despesa. O montante é **sempre positivo** e pode ter, no máximo, duas casas decimais.
+- A categoria tem de pertencer ao utilizador autenticado **e** ter o mesmo tipo da transação.
+- Conta e categoria têm de pertencer ao utilizador autenticado; não é possível escrever o `userId` no JSON.
+- Data obrigatória em ISO 8601 com `Z` (UTC) ou offset (por exemplo, `+01:00`); o backend guarda-a em UTC.
+- Descrição opcional, até 500 caracteres; espaços exteriores são removidos.
+- Datas invertidas, valores inválidos ou categoria de tipo incompatível: `400`. Recurso inexistente ou de outro utilizador: `404`.
+
+**Passos no Swagger:** faz login → obtém `accountId` e `categoryId` → executa `POST /api/transactions` → guarda o `id` devolvido → verifica com `GET` → edita com `PUT` → remove com `DELETE` → confirma `404` numa nova consulta.
+
+### 7.6. Orçamentos mensais e alertas
+
+| Método | Endpoint | Função |
+| --- | --- | --- |
+| `GET` | `/api/budgets` | Lista orçamentos, com filtros opcionais `year` e `month` |
+| `GET` | `/api/budgets/{id}` | Consulta um orçamento |
+| `POST` | `/api/budgets` | Cria um orçamento |
+| `PUT` | `/api/budgets/{id}` | Atualiza um orçamento |
+| `DELETE` | `/api/budgets/{id}` | Elimina um orçamento |
+| `GET` | `/api/budgets/alerts` | Lista alertas de consumo, com filtros `year` e `month` |
+
+Exemplo JSON para criar ou editar um orçamento:
+
+```json
+{
+  "categoryId": "COLOCAR_GUID_DE_CATEGORIA_EXPENSE",
+  "month": 11,
+  "year": 2026,
+  "limitAmount": 250.00
+}
+```
+
+Os orçamentos aplicam-se a **categorias de despesa do próprio utilizador**. O limite tem de ser positivo, o mês tem de estar entre 1 e 12 e não pode existir mais de um orçamento para a mesma categoria/ano/mês (duplicado → `409 Conflict`).
+
+O endpoint de alertas apresenta categorias com gastos **a partir de 80% do limite** (`NearLimit`), ou que já **ultrapassaram 100%** (`Exceeded`). Inclui o limite, o montante gasto, o saldo restante e a percentagem de utilização. O cálculo utiliza as transações do utilizador da categoria e do mês correspondente. Trata-se de **alertas disponibilizados pela API**, não de notificações automáticas ou de uma interface frontend já concluída.
+
+### 7.7. Base de dados, DBeaver e endpoints de desenvolvimento
+
+**DBeaver** é opcional. Para visualizar as tabelas, cria uma ligação PostgreSQL com host `localhost`, porta definida em `POSTGRES_PORT` (por omissão `5432`), database/username/password iguais aos configurados no PostgreSQL; a base e o utilizador podem ser diferentes dos valores de exemplo. Na ligação, abre `Schemas → public → Tables → Accounts / Transactions / Categories / Budgets` e consulta a aba **Data**. Evita editar ou apagar diretamente os registos de desenvolvimento, salvo quando souberes o efeito.
+
+As rotas `/dev/*` só devolvem dados no ambiente **Development**. Exemplos:
+
+| Endpoint | Para que serve |
+| --- | --- |
+| `GET /dev/db` | Quantidade de utilizadores, contas, categorias, transações, orçamentos e metas |
+| `GET /dev/users` | IDs e emails de demonstração |
+| `GET /dev/users/{userId}/accounts` | Contas do utilizador indicado |
+| `GET /dev/users/{userId}/categories` | IDs e tipos de categorias (útil para o CRUD de transações) |
+| `GET /dev/users/{userId}/transactions` | Até 50 transações recentes desse utilizador |
+| `GET /dev/users/{userId}/budgets` | Orçamentos desse utilizador |
+| `GET /dev/users/{userId}/goals` | Metas desse utilizador |
+| `GET /dev/users/{userId}/dashboard?year=2026&month=11` | Resumo mensal de receitas, despesas e limites |
+
+**Atenção:** estes endpoints de diagnóstico mostram dados por ID e **não substituem APIs públicas protegidas por autenticação**. Só devem ser usados em ambiente de desenvolvimento. O CRUD público de categorias, o dashboard público e o CRUD de metas **não estão implementados no código analisado**.
+
+### 7.8. Testes automatizados com xUnit
+
+Os testes xUnit são executados pelo SDK .NET, sem precisar de iniciar manualmente a API. Vários testes do CRUD utilizam a base InMemory em vez de PostgreSQL, enquanto testes do Swagger verificam o comportamento da aplicação de teste.
+
+Na raiz do projeto:
+
+```powershell
+# Compilar o código
+dotnet build PersonalFinance.slnx
+
+# Executar todos os testes automatizados
+dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj
+
+# Apenas testes do CRUD de contas e Swagger
+dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter "FullyQualifiedName~AccountsControllerTests|FullyQualifiedName~SwaggerEndpointsTests"
+
+# Apenas testes de transações e Swagger
+dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter "FullyQualifiedName~TransactionsControllerTests|FullyQualifiedName~SwaggerEndpointsTests"
+
+# Também podes executar testes da solução
+dotnet test PersonalFinance.slnx
+```
+
+O projeto contém ainda testes de registo, login, validação de pedidos de orçamento e classificação de alertas. **Um comando documentado não significa que os testes passaram:** confirma o resultado `Passed` no teu terminal e resolve eventuais falhas antes de abrir o Pull Request.
+
+### 7.9. Testes HTTP de ponta a ponta em PowerShell
+
+Ao contrário do xUnit, estes scripts exigem a **API a correr**, o **PostgreSQL ligado**, a migration aplicada e os **utilizadores do seed criados**.
+
+**Terminal 1 (na raiz):**
+
+```powershell
+docker compose up -d
+dotnet run --project backend/PersonalFinance.Api --launch-profile http
+```
+
+**Terminal 2 (na raiz):**
+
+```powershell
+.\scripts\test-transactions.ps1
+.\scripts\test-accounts.ps1
+```
+
+O script `test-transactions.ps1` faz login, cria, consulta, filtra, atualiza e elimina uma transação de teste. Verifica também `401` sem sessão, `400` em pedidos inválidos e `404` entre utilizadores. Em caso de execução normal, apaga a transação temporária.
+
+**Atenção ao script de contas:** na versão do projeto analisada, `scripts/test-accounts.ps1` ainda faz login em `/dev/auth/login`, que **não existe** no `AuthController` atual. Antes de o executar, substitui **as duas ocorrências** de `/dev/auth/login` por `/auth/login` nesse script. O restante teste cobre as operações CRUD de contas, validações, isolamento e bloqueio de eliminação de contas que tenham transações.
+
+Se já estiveres na pasta `scripts`, executa `.\test-transactions.ps1` ou `.\test-accounts.ps1` (sem o prefixo `scripts/`). O PowerShell não executa scripts da pasta atual apenas pelo nome. Se surgir uma política de execução impeditiva, podes permitir apenas na sessão atual:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+Caso uses outra porta, os scripts aceitam o argumento `-BaseUrl`:
+
+```powershell
+.\scripts\test-transactions.ps1 -BaseUrl 'http://localhost:5185'
+```
+
+**Testes HTTP têm efeitos na BD de desenvolvimento.** Não os executes contra produção nem contra uma base com dados reais.
+
+### 7.10. Outras verificações
+
+```powershell
+# Frontend — análise estática e build
+cd frontend
+npm ci
+npm run lint
+npm run build
+cd ..
+
+# Base de dados — estado do container
+docker compose ps
+```
+
+Na branch atual, o frontend continua a ser o template React/Vite. Um build do frontend sem erros não significa que as páginas de finanças estejam implementadas. Se surgir um erro num teste ou build, consulta a [secção 8](#8-problemas-frequentes-e-soluções).
 
 ---
 
@@ -612,7 +841,7 @@ chama-se `personal-finance-db`.
 3. Testar a ligação ao PostgreSQL:
 
 ```powershell
-docker compose exec db psql -U personal_dev -d personal_finance
+docker compose exec db psql -U personal_finance_user -d personal_finance
 ```
 
 4. Confirmar que a connection string dos User Secrets
@@ -628,10 +857,7 @@ Utilizar `docker compose exec db ...` ou
 
 **Erro: `role "finance_dev" does not exist`**
 
-O utilizador configurado no projeto é `personal_dev`.
-Substituir `finance_dev` por `personal_dev` nos comandos
-e na connection string, depois de confirmar que essa role
-existe no PostgreSQL.
+O `.env.example` utiliza `personal_finance_user`, mas a tua base de dados já existente pode ter um utilizador diferente. Usa a role que realmente foi criada quando o volume PostgreSQL foi inicializado e ajusta a connection string dos User Secrets.
 
 **Atenção aos volumes Docker:**
 
@@ -649,11 +875,11 @@ Instala o **.NET SDK 10**, fecha e reabre o terminal e confirma `dotnet --versio
 
 ### `dotnet ef` não é reconhecido
 
-Na raiz, executa `dotnet tool restore`. Se não existir `.config/dotnet-tools.json`, o responsável pelo setup deve adicionar e versionar a ferramenta.
+Na raiz, executa `dotnet tool restore --tool-manifest ./dotnet-tools.json`. O manifesto já existe neste projeto e fixa `dotnet-ef` 8.0.33.
 
 ### `No migrations were found` ou pasta `Migrations/` em falta
 
-Ainda poderá não existir uma migration versionada. **Não cries migrations independentes em cada computador.** A primeira deve ser criada uma vez por um responsável e enviada para o GitHub.
+A migration `InitialCreate` já está versionada. Confirma que estás a executar o comando na raiz do repositório e que tens os ficheiros de `Migrations/`. **Não recries a migration** sem coordenação com a equipa.
 
 ### `npm` não é reconhecido
 
@@ -665,14 +891,48 @@ O responsável pelo frontend deverá executar `npm install` na pasta `frontend/`
 
 ### O React abre, mas a API não responde
 
-1. Confirma que a API está a correr em `http://localhost:5000`.
-2. Confirma que `frontend/vite.config.ts` encaminha `/api` para `http://localhost:5000`.
-3. Verifica se `/api/health` já está implementado no backend.
-4. Confirma que o PostgreSQL está `healthy`.
+1. Confirma que a API .NET está a executar e a mostrar `Now listening on: http://localhost:5185`.
+2. Abre `http://localhost:5185/health` num navegador.
+3. O ficheiro `frontend/vite.config.ts` **não contém um proxy `/api`**; as chamadas React devem apontar para o endereço correto e respeitar as regras CORS/cookies.
+4. Confirma que o PostgreSQL está `healthy` com `docker compose ps`.
 
 ### Erro `404` em `/api/health`
 
-A API pode estar a funcionar, mas o endpoint de teste ainda não foi implementado. Confirma o `Program.cs` e o estado atual do setup antes de assumir que a ligação à base de dados falhou.
+A rota implementada é **`GET /health`**, não `/api/health`. Abre `http://localhost:5185/health`.
+
+### `Invoke-RestMethod`: `Unable to connect to the remote server`
+
+O PowerShell não consegue ligar à API; o DBeaver pode estar conectado ao PostgreSQL e, mesmo assim, a API não estar em execução. Num terminal separado, na raiz, executa:
+
+```powershell
+dotnet run --project backend/PersonalFinance.Api --launch-profile http
+```
+
+Mantém a API aberta e tenta `http://localhost:5185/health`. Se estiveres noutra porta, passa `-BaseUrl` ao script de teste.
+
+### `test-transactions.ps1` não é reconhecido pelo PowerShell
+
+Se estiveres na pasta `scripts`, utiliza `.\test-transactions.ps1` e não apenas `test-transactions.ps1`. Se estiveres na raiz do projeto, utiliza `.\scripts\test-transactions.ps1`.
+
+### O Swagger devolve `401 Unauthorized`
+
+Primeiro usa `POST /auth/login` no próprio Swagger e confirma `200`. Depois executa o endpoint protegido na mesma aba/navegador, para que o cookie `pf.auth` seja enviado. Sem sessão válida, `401` é o comportamento esperado.
+
+### `POST /api/transactions` devolve `404` para conta ou categoria
+
+Confirma que os GUIDs existem e pertencem ao utilizador autenticado. Utiliza `GET /api/accounts` e, apenas em Development, `GET /dev/users/{userId}/categories`. Categoria `Expense` com transação `Income` (ou vice-versa) causa `400`.
+
+### O teste de contas falha em `/dev/auth/login`
+
+O script `scripts/test-accounts.ps1` contém uma rota antiga. Atualiza as duas ocorrências para `/auth/login`. O endpoint de login atual é `POST /auth/login`.
+
+### `dotnet tool restore` não encontra o manifesto
+
+No projeto analisado, o manifesto de ferramentas chama-se `dotnet-tools.json` e fica na raiz. Executa `dotnet tool restore --tool-manifest ./dotnet-tools.json`.
+
+### `GET /health` devolve `503`
+
+A API arrancou, mas não conseguiu aceder ao PostgreSQL. Verifica `docker compose ps`, `.env`, User Secrets, porta e credenciais efetivas da base de dados.
 
 ### `git clone` pede acesso ou devolve `Repository not found`
 
@@ -693,7 +953,22 @@ Prioridades do projeto (MoSCoW):
 
 **Ordem sugerida:** setup → autenticação/contas → categorias/transações → orçamentos/metas/dashboard → alertas/relatórios → testes e apresentação.
 
-O primeiro marco funcional deverá permitir que um utilizador **se registe, inicie sessão e crie uma conta financeira associada ao seu perfil**. Depois, a equipa desenvolve as transações e os restantes módulos.
+### Funcionalidades já existentes versus trabalho futuro
+
+| Área | Estado observado no código analisado |
+| --- | --- |
+| Registo, login, perfil e logout | **Implementado no backend** com ASP.NET Core Identity e cookie `pf.auth`. |
+| CRUD de contas | **Implementado no backend**, com controlo por utilizador. |
+| CRUD de transações | **Implementado no backend**, com filtros e validações. |
+| CRUD de orçamentos e alertas | **Implementado no backend**, incluindo alertas a partir de 80%. |
+| Categorias | Modelo, tabelas e dados de demonstração existentes; **sem CRUD público** nesta versão. |
+| Dashboard | Resumo disponível em **`/dev`**, sem endpoint público de dashboard nesta versão. |
+| Metas de poupança | Modelo e dados de demonstração existentes; **sem CRUD público** nesta versão. |
+| Recuperação de password | **Planeada**, não identificada no `AuthController` atual. |
+| Interface React funcional | **Por desenvolver**; o template inicial do Vite está presente. |
+| Swagger e testes xUnit | **Configurados no backend**, com testes para vários módulos. |
+
+Esta tabela descreve as funcionalidades **presentes no código** disponibilizado, não certifica que estejam todas compiladas ou testadas com sucesso na tua máquina. A existência de um modelo na base de dados não implica que exista uma página React ou API pública correspondente.
 
 ---
 
@@ -726,35 +1001,48 @@ npm install
 cd ..
 ```
 
-Para instalar os pacotes de persistência no backend, utiliza **versões compatíveis com o .NET SDK 10** e o EF Core 10 definidas pela equipa:
+**No repositório atual, não voltes a instalar estes pacotes:** o `.csproj` já contém as referências de persistência, Identity e Swagger. A base do projeto usa .NET 10, com **EF Core/Npgsql/Identity 8.x**, e o gestor de pacotes deve respeitar as versões efetivamente definidas nos `.csproj`. Para um clone existente, usa `dotnet restore PersonalFinance.slnx`; não mistures indiscriminadamente EF Core 10 com as dependências EF Core 8 do projeto.
+
+Num projeto criado do zero também seria necessário configurar `docker-compose.yml`, `.env.example`, `.gitignore`, `Program.cs` e o `AppDbContext`. **Estes ficheiros e a migration inicial já existem neste repositório.**
+
+O projeto já possui o manifesto de ferramentas local **`dotnet-tools.json`** (na raiz), com `dotnet-ef` **8.0.33**. Para o restaurar, executa:
 
 ```powershell
-dotnet add backend/PersonalFinance.Api/PersonalFinance.Api.csproj package Npgsql.EntityFrameworkCore.PostgreSQL --version 10.0.3
-
-dotnet add backend/PersonalFinance.Api/PersonalFinance.Api.csproj package Microsoft.EntityFrameworkCore.Design --version 10.0.12
-
-dotnet add backend/PersonalFinance.Api/PersonalFinance.Api.csproj package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 10.0.12
+dotnet tool restore --tool-manifest ./dotnet-tools.json
 ```
 
-Também deve ser criada e enviada para o GitHub a configuração `docker-compose.yml`, o `.env.example`, o `.gitignore`, o `Program.cs` com a ligação EF Core e, quando estiver pronto, o `AppDbContext` e a primeira migration.
+**Não** executes `dotnet new tool-manifest` num clone já configurado.
 
-A ferramenta `dotnet-ef` deve ser registada e versionada **uma única vez** na raiz:
-
-```powershell
-dotnet new tool-manifest
-dotnet tool install --local dotnet-ef --version 10.0.12
-```
-
-Depois de criar as entidades e o `AppDbContext`, criar a **primeira migration** uma única vez e enviar os ficheiros da pasta `Migrations/` para o Git:
+A migration **`InitialCreate` já está criada e versionada**. Quem clonar o projeto só precisa de a aplicar:
 
 ```powershell
-dotnet ef migrations add InitialCreate --project backend/PersonalFinance.Api --startup-project backend/PersonalFinance.Api
-
 dotnet ef database update --project backend/PersonalFinance.Api --startup-project backend/PersonalFinance.Api
 ```
 
-Estas migrations não podem ser geradas antes de a equipa implementar as classes e configurações correspondentes. Os restantes membros executam **apenas** `dotnet ef database update`.
+Para uma estrutura criada do zero, a primeira migration teria de ser gerada **uma única vez** após criar os modelos e o `AppDbContext`; isso não faz parte do setup normal da equipa.
 
 Depois do setup, o responsável deve testar os comandos da [secção 4](#4-preparar-e-executar-o-projeto-pela-primeira-vez) como se fosse um novo membro da equipa e enviar os ficheiros para o GitHub.
 
 ---
+
+## 11. Checklist de instalação e execução
+
+Antes de começar a desenvolver ou demonstrar os CRUDs, confirma:
+
+- [ ] `.NET SDK 10`, Node.js, npm, Git e Docker instalados.
+- [ ] Ficheiro `.env` criado a partir de `.env.example` e não enviado ao Git.
+- [ ] Docker Desktop iniciado e `docker compose ps` indica PostgreSQL `healthy`.
+- [ ] `ConnectionStrings:DefaultConnection` configurada em User Secrets com as credenciais corretas.
+- [ ] `dotnet restore PersonalFinance.slnx` e ferramentas locais restauradas.
+- [ ] Migrations aplicadas com `dotnet ef database update`.
+- [ ] Seed executado **se** precisares de dados de demonstração.
+- [ ] API iniciada em `http://localhost:5185` e `GET /health` devolve `database: connected`.
+- [ ] Swagger disponível em `http://localhost:5185/swagger` no ambiente Development.
+- [ ] Login em `POST /auth/login` efetuado antes de testar endpoints protegidos.
+- [ ] IDs reais de contas e categorias obtidos antes de criar transações ou orçamentos.
+- [ ] `dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj` executado e resultados verificados.
+- [ ] Script `test-transactions.ps1` executado contra a API local, se precisares do teste HTTP completo.
+- [ ] Rota antiga corrigida no script de contas antes de o executares.
+- [ ] `git status` confirmado, sem segredos ou ficheiros gerados incluídos nos commits.
+
+> **Nota final:** este README documenta a versão do código inspecionada em novembro de 2026. Se novas branches forem integradas, atualiza as secções de funcionalidades e endpoints em simultâneo com o código.
