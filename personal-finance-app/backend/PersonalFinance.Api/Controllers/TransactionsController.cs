@@ -82,30 +82,29 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         TransactionRequestDto request, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        if (!TryValidateRequest(request, out var error)) return BadRequest(new { error });
+        if (!TryValidateRequest(request, out var values, out var error))
+            return BadRequest(new { error });
 
         var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == request.AccountId!.Value && a.UserId == userId)
+            .Where(a => a.Id == values.AccountId && a.UserId == userId)
             .Select(a => new { a.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (account is null) return NotFound(new { error = "Conta nao encontrada." });
 
         var category = await db.Categories.AsNoTracking()
-            .Where(c => c.Id == request.CategoryId!.Value && c.UserId == userId)
-            .Select(c => new { c.Name, c.Type })
+            .Where(c => c.Id == values.CategoryId && c.UserId == userId)
+            .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-        if (category.Type != request.Type!.Value)
-            return BadRequest(new { error = "O tipo da transacao deve coincidir com o tipo da categoria." });
 
         var transaction = new FinanceTransaction
         {
             UserId = userId,
-            AccountId = request.AccountId.Value,
-            CategoryId = request.CategoryId.Value,
-            Amount = request.Amount!.Value,
-            Type = request.Type.Value,
-            Date = request.Date!.Value.UtcDateTime,
+            AccountId = values.AccountId,
+            CategoryId = values.CategoryId,
+            Amount = values.Amount,
+            Type = values.Type,
+            Date = values.Date.UtcDateTime,
             Description = NormalizeDescription(request.Description)
         };
 
@@ -128,31 +127,30 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         Guid id, TransactionRequestDto request, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        if (!TryValidateRequest(request, out var error)) return BadRequest(new { error });
+        if (!TryValidateRequest(request, out var values, out var error))
+            return BadRequest(new { error });
 
         var transaction = await db.Transactions
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
         if (transaction is null) return NotFound();
 
         var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == request.AccountId!.Value && a.UserId == userId)
+            .Where(a => a.Id == values.AccountId && a.UserId == userId)
             .Select(a => new { a.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (account is null) return NotFound(new { error = "Conta nao encontrada." });
 
         var category = await db.Categories.AsNoTracking()
-            .Where(c => c.Id == request.CategoryId!.Value && c.UserId == userId)
-            .Select(c => new { c.Name, c.Type })
+            .Where(c => c.Id == values.CategoryId && c.UserId == userId)
+            .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-        if (category.Type != request.Type!.Value)
-            return BadRequest(new { error = "O tipo da transacao deve coincidir com o tipo da categoria." });
 
-        transaction.AccountId = request.AccountId.Value;
-        transaction.CategoryId = request.CategoryId.Value;
-        transaction.Amount = request.Amount!.Value;
-        transaction.Type = request.Type.Value;
-        transaction.Date = request.Date!.Value.UtcDateTime;
+        transaction.AccountId = values.AccountId;
+        transaction.CategoryId = values.CategoryId;
+        transaction.Amount = values.Amount;
+        transaction.Type = values.Type;
+        transaction.Date = values.Date.UtcDateTime;
         transaction.Description = NormalizeDescription(request.Description);
 
         try
@@ -205,38 +203,54 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         ex.InnerException is PostgresException
         { SqlState: PostgresErrorCodes.ForeignKeyViolation };
 
-    private static bool TryValidateRequest(TransactionRequestDto request, out string? error)
+    private static bool TryValidateRequest(
+        TransactionRequestDto request,
+        out ValidatedTransactionRequest values,
+        out string? error)
     {
-        if (request.AccountId is null || request.AccountId == Guid.Empty ||
-            request.CategoryId is null || request.CategoryId == Guid.Empty)
+        if (request.AccountId is not Guid accountId || accountId == Guid.Empty ||
+            request.CategoryId is not Guid categoryId || categoryId == Guid.Empty)
         {
+            values = default;
             error = "A conta e a categoria devem ter identificadores validos.";
             return false;
         }
-        if (request.Type is null || !Enum.IsDefined(request.Type.Value))
+        if (request.Type is not TransactionType type || !Enum.IsDefined(type))
         {
+            values = default;
             error = "O tipo deve ser Income ou Expense.";
             return false;
         }
-        if (request.Amount is null || request.Amount <= 0m ||
-            request.Amount > 9999999999999999.99m ||
-            decimal.Round(request.Amount.Value, 2) != request.Amount.Value)
+        if (request.Amount is not decimal amount || amount <= 0m ||
+            amount > 9999999999999999.99m ||
+            decimal.Round(amount, 2) != amount)
         {
+            values = default;
             error = "O montante deve ser positivo e ter, no maximo, duas casas decimais.";
             return false;
         }
-        if (request.Date is null)
+        if (request.Date is not DateTimeOffset date)
         {
+            values = default;
             error = "A data e obrigatoria.";
             return false;
         }
         if (request.Description?.Length > 500)
         {
+            values = default;
             error = "A descricao nao pode exceder 500 caracteres.";
             return false;
         }
 
+        values = new ValidatedTransactionRequest(accountId, categoryId, amount, type, date);
         error = null;
         return true;
     }
+
+    private readonly record struct ValidatedTransactionRequest(
+        Guid AccountId,
+        Guid CategoryId,
+        decimal Amount,
+        TransactionType Type,
+        DateTimeOffset Date);
 }
