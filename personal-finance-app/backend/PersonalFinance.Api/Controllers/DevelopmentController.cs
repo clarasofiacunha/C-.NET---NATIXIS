@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PersonalFinance.Api.DTOs.Auth;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
 
@@ -11,7 +9,6 @@ namespace PersonalFinance.Api.Controllers;
 [Route("dev")]
 public class DevelopmentController(
     AppDbContext db,
-    UserManager<AppUser> userManager,
     IWebHostEnvironment environment) : ControllerBase
 {
     private bool IsDevelopment => environment.IsDevelopment();
@@ -41,18 +38,6 @@ public class DevelopmentController(
             .OrderBy(u => u.Name)
             .Select(u => new { u.Id, u.Name, u.Email, u.CreatedAt })
             .ToListAsync());
-    }
-
-    [HttpPost("auth/check")]
-    public async Task<IActionResult> CheckPassword(LoginCheckRequestDto request)
-    {
-        if (!IsDevelopment) return NotFound();
-
-        var user = await userManager.FindByEmailAsync(request.Email ?? "");
-        var valid = user is not null
-            && await userManager.CheckPasswordAsync(user, request.Password ?? "");
-
-        return Ok(new { passwordCorrect = valid });
     }
 
     [HttpGet("users/{userId:guid}/accounts")]
