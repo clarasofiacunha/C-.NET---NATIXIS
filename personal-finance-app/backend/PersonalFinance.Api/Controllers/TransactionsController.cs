@@ -93,11 +93,9 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
 
         var category = await db.Categories.AsNoTracking()
             .Where(c => c.Id == values.CategoryId && c.UserId == userId)
-            .Select(c => new { c.Name, c.Type })
+            .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-        if (category.Type != values.Type)
-            return BadRequest(new { error = "O tipo da transacao deve coincidir com o tipo da categoria." });
 
         var transaction = new FinanceTransaction
         {
@@ -144,11 +142,9 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
 
         var category = await db.Categories.AsNoTracking()
             .Where(c => c.Id == values.CategoryId && c.UserId == userId)
-            .Select(c => new { c.Name, c.Type })
+            .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-        if (category.Type != values.Type)
-            return BadRequest(new { error = "O tipo da transacao deve coincidir com o tipo da categoria." });
 
         transaction.AccountId = values.AccountId;
         transaction.CategoryId = values.CategoryId;

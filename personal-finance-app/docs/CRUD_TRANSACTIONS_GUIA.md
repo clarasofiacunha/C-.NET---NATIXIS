@@ -65,9 +65,10 @@ Por omissao, as transacoes vem da mais recente para a mais antiga.
 
 **Nota:** `accountId` e `categoryId` devem ser GUIDs reais da BD. O cliente
 nao fornece `userId`. Em cada escrita, o backend confirma que a conta e a
-categoria pertencem ao utilizador autenticado e que o tipo da categoria coincide
-com o tipo da transacao. A data e gravada em UTC; o pedido deve usar ISO 8601
-com `Z` ou um offset (por exemplo `+01:00`).
+categoria pertencem ao utilizador autenticado. O tipo da transacao e independente
+do tipo configurado na categoria; por exemplo, uma receita como subsidio de
+alimentacao pode usar a categoria "Alimentacao". A data e gravada em UTC; o
+pedido deve usar ISO 8601 com `Z` ou um offset (por exemplo `+01:00`).
 
 ### Campos da resposta
 
@@ -80,12 +81,12 @@ com `Z` ou um offset (por exemplo `+01:00`).
 2. `UserId` vem do `ClaimTypes.NameIdentifier`, nunca do JSON nem da URL.
 3. Consultas, edicoes e eliminacoes filtram por `UserId`, impedindo acesso cruzado.
 4. `amount` e estritamente positivo, com no maximo duas casas decimais;
-   a categoria determina se e `Income` ou `Expense`.
+   o `type` da transacao e independente do tipo da categoria.
 5. O `type` deve ser valido; `accountId` e `categoryId` nao podem ser vazios.
 6. `date` e obrigatoria; `description` e opcional (max. 500 caracteres),
    sem espacos exteriores quando guardada.
 7. Conta/categoria inexistente ou de outra pessoa -> 404.
-8. Tipo diferente da categoria, montante invalido ou periodo invertido -> 400.
+8. Montante invalido ou periodo invertido -> 400.
 9. Um ID de transacao inexistente ou de outro utilizador -> 404.
 
 O modelo atual guarda montantes positivos para ambos os tipos; o sinal de uma

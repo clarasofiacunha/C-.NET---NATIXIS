@@ -223,7 +223,7 @@ public sealed class TransactionsControllerTests
     }
 
     [Fact]
-    public async Task Create_CategoryTypeDifferentFromTransaction_Returns400()
+    public async Task Create_IncomeTransactionInExpenseCategory_IsAllowed()
     {
         await using var db = NewDatabase();
         var userId = Guid.NewGuid();
@@ -232,8 +232,13 @@ public sealed class TransactionsControllerTests
         var result = await NewController(db, userId).Create(
             Request(account, expense, 20m, TransactionType.Income), CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Empty(db.Transactions);
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var response = Assert.IsType<TransactionResponseDto>(created.Value);
+        Assert.Equal(expense.Id, response.CategoryId);
+        Assert.Equal(TransactionType.Income, response.Type);
+        var transaction = await db.Transactions.SingleAsync();
+        Assert.Equal(expense.Id, transaction.CategoryId);
+        Assert.Equal(TransactionType.Income, transaction.Type);
     }
 
     [Theory]
@@ -309,7 +314,7 @@ public sealed class TransactionsControllerTests
     }
 
     [Fact]
-    public async Task Update_CategoryTypeDifferentFromTransaction_Returns400WithoutSaving()
+    public async Task Update_ExpenseTransactionInIncomeCategory_IsAllowed()
     {
         await using var db = NewDatabase();
         var userId = Guid.NewGuid();
@@ -321,8 +326,14 @@ public sealed class TransactionsControllerTests
         var result = await NewController(db, userId).Update(transaction.Id,
             Request(account, income, 100m, TransactionType.Expense), CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal(10m, (await db.Transactions.SingleAsync()).Amount);
+        var updated = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<TransactionResponseDto>(updated.Value);
+        Assert.Equal(income.Id, response.CategoryId);
+        Assert.Equal(TransactionType.Expense, response.Type);
+        var saved = await db.Transactions.SingleAsync();
+        Assert.Equal(100m, saved.Amount);
+        Assert.Equal(income.Id, saved.CategoryId);
+        Assert.Equal(TransactionType.Expense, saved.Type);
     }
 
     [Fact]
