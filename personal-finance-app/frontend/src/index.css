@@ -6,3 +6,8 @@ a { color: #20634f; text-underline-offset: 4px; }
 button, a, input { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid #b88734; outline-offset: 4px; }
 button { cursor: pointer; }
+
+/* Natixis purple palette */
+:root { color: #30153e; background: #fcfaff; }
+a { color: #6f2c91; }
+:focus-visible { outline-color: #aa3bff; }
