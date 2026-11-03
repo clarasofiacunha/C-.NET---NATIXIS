@@ -12,12 +12,15 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     // Permite "Checking", "Savings" e "Cash" no JSON; rejeita numeros para o tipo de conta.
     options.JsonSerializerOptions.Converters.Add(
         new JsonStringEnumConverter<AccountType>(allowIntegerValues: false));
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter<TransactionType>(allowIntegerValues: false));
 });
 
 // Swagger - documentação e testes da API
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddCors(options =>
 {
