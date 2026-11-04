@@ -16,7 +16,7 @@ coverage.xml
 *.trx
 
 # Shared IDE files
-.vscode/settings.json
+.vscode/
 .vs/
 .idea/
 *.user
