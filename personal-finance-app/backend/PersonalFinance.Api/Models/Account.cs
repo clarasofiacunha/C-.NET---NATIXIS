@@ -8,6 +8,8 @@ public class Account
     public string Name { get; set; } = string.Empty;
     public AccountType Type { get; set; }
     public decimal InitialBalance { get; set; }
+    public decimal Balance { get; set; }
+    public int Version { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<FinanceTransaction> Transactions { get; set; } = new List<FinanceTransaction>();
 }

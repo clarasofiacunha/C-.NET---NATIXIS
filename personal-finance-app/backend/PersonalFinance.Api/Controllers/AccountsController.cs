@@ -29,7 +29,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
             .OrderBy(a => a.Name)
             .ThenBy(a => a.Id)
             .Select(a => new AccountResponseDto(
-                a.Id, a.Name, a.Type, a.InitialBalance, a.CreatedAt))
+                a.Id, a.Name, a.Type, a.InitialBalance, a.Balance, a.CreatedAt))
             .ToListAsync(cancellationToken);
 
         return Ok(accounts);
@@ -44,7 +44,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
         var account = await db.Accounts.AsNoTracking()
             .Where(a => a.Id == id && a.UserId == userId)
             .Select(a => new AccountResponseDto(
-                a.Id, a.Name, a.Type, a.InitialBalance, a.CreatedAt))
+                a.Id, a.Name, a.Type, a.InitialBalance, a.Balance, a.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (account is null) return NotFound();
@@ -63,7 +63,8 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
             UserId = userId,
             Name = request.Name!.Trim(),
             Type = request.Type!.Value,
-            InitialBalance = request.InitialBalance!.Value
+            InitialBalance = request.InitialBalance!.Value,
+            Balance = request.InitialBalance.Value
         };
 
         db.Accounts.Add(account);
@@ -87,9 +88,11 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
 
         if (account is null) return NotFound();
 
+        account.Balance += request.InitialBalance!.Value - account.InitialBalance;
+        account.InitialBalance = request.InitialBalance.Value;
+        account.Version++;
         account.Name = request.Name!.Trim();
         account.Type = request.Type!.Value;
-        account.InitialBalance = request.InitialBalance!.Value;
 
         try
         {
@@ -97,7 +100,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return NotFound();
+            return Conflict(new { error = "A conta foi alterada em simultaneo. Tente novamente." });
         }
 
         return Ok(AccountResponseDto.FromModel(account));

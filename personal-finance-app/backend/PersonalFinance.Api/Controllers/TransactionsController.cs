@@ -85,10 +85,9 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         if (!TryValidateRequest(request, out var values, out var error))
             return BadRequest(new { error });
 
-        var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == values.AccountId && a.UserId == userId)
-            .Select(a => new { a.Name })
-            .FirstOrDefaultAsync(cancellationToken);
+        var account = await db.Accounts
+            .FirstOrDefaultAsync(a => a.Id == values.AccountId && a.UserId == userId,
+                cancellationToken);
         if (account is null) return NotFound(new { error = "Conta nao encontrada." });
 
         var category = await db.Categories.AsNoTracking()
@@ -108,10 +107,16 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             Description = NormalizeDescription(request.Description)
         };
 
+        account.Balance += BalanceChange(values.Type, values.Amount);
+        account.Version++;
         db.Transactions.Add(transaction);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new { error = "A conta foi alterada em simultaneo. Tente novamente." });
         }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
         {
@@ -134,10 +139,9 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
         if (transaction is null) return NotFound();
 
-        var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == values.AccountId && a.UserId == userId)
-            .Select(a => new { a.Name })
-            .FirstOrDefaultAsync(cancellationToken);
+        var account = await db.Accounts
+            .FirstOrDefaultAsync(a => a.Id == values.AccountId && a.UserId == userId,
+                cancellationToken);
         if (account is null) return NotFound(new { error = "Conta nao encontrada." });
 
         var category = await db.Categories.AsNoTracking()
@@ -145,6 +149,27 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
         if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
+
+        var previousAccount = transaction.AccountId == account.Id
+            ? account
+            : await db.Accounts.FirstOrDefaultAsync(
+                a => a.Id == transaction.AccountId && a.UserId == userId, cancellationToken);
+        if (previousAccount is null)
+            return NotFound(new { error = "A conta associada a transacao nao foi encontrada." });
+
+        if (previousAccount.Id == account.Id)
+        {
+            account.Balance += BalanceChange(values.Type, values.Amount)
+                - BalanceChange(transaction.Type, transaction.Amount);
+            account.Version++;
+        }
+        else
+        {
+            previousAccount.Balance -= BalanceChange(transaction.Type, transaction.Amount);
+            previousAccount.Version++;
+            account.Balance += BalanceChange(values.Type, values.Amount);
+            account.Version++;
+        }
 
         transaction.AccountId = values.AccountId;
         transaction.CategoryId = values.CategoryId;
@@ -159,7 +184,7 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return NotFound();
+            return Conflict(new { error = "A conta ou transacao foi alterada em simultaneo. Tente novamente." });
         }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
         {
@@ -178,6 +203,14 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
         if (transaction is null) return NotFound();
 
+        var account = await db.Accounts
+            .FirstOrDefaultAsync(a => a.Id == transaction.AccountId && a.UserId == userId,
+                cancellationToken);
+        if (account is null)
+            return NotFound(new { error = "A conta associada a transacao nao foi encontrada." });
+
+        account.Balance -= BalanceChange(transaction.Type, transaction.Amount);
+        account.Version++;
         db.Transactions.Remove(transaction);
         try
         {
@@ -185,7 +218,7 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return NotFound();
+            return Conflict(new { error = "A conta ou transacao foi alterada em simultaneo. Tente novamente." });
         }
 
         return NoContent();
@@ -198,6 +231,9 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
 
     private static string? NormalizeDescription(string? description) =>
         string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+    private static decimal BalanceChange(TransactionType type, decimal amount) =>
+        type == TransactionType.Income ? amount : -amount;
 
     private static bool IsForeignKeyViolation(DbUpdateException ex) =>
         ex.InnerException is PostgresException

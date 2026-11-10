@@ -8,6 +8,7 @@ public sealed record AccountResponseDto(
     string Name,
     AccountType Type,
     decimal InitialBalance,
+    decimal Balance,
     DateTime CreatedAt)
 {
     public static AccountResponseDto FromModel(Account account) => new(
@@ -15,5 +16,6 @@ public sealed record AccountResponseDto(
         account.Name,
         account.Type,
         account.InitialBalance,
+        account.Balance,
         account.CreatedAt);
 }

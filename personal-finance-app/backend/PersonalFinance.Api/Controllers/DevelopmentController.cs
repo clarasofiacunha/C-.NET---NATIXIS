@@ -48,7 +48,7 @@ public class DevelopmentController(
         return Ok(await db.Accounts.AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderBy(a => a.Name)
-            .Select(a => new { a.Id, a.Name, a.Type, a.InitialBalance, a.CreatedAt })
+            .Select(a => new { a.Id, a.Name, a.Type, a.InitialBalance, a.Balance, a.CreatedAt })
             .ToListAsync());
     }
 
