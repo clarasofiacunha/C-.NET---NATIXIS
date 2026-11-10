@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 tasks/
+.agents/
 
 # .NET backend build output
 [Bb]in/
