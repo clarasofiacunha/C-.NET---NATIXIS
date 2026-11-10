@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+tasks/
 
 # .NET backend build output
 [Bb]in/

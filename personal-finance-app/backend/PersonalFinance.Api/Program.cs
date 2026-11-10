@@ -23,6 +23,11 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IMonthlySummaryService, MonthlySummaryService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.SectionName));
+builder.Services.AddHttpClient<IRecoveryEmailSender, BrevoRecoveryEmailSender>(client =>
+{
+    client.BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress);
+});
 
 builder.Services.AddCors(options =>
 {
