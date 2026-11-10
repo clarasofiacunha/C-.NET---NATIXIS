@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import '../../styles/auth.css'
-export type AuthPageMode = 'login' | 'register' | 'forgot-password'
+export type AuthPageMode = 'login' | 'register' | 'forgot-password' | 'reset-password'
 const financialTips = [
   'Set a limit for variable expenses.',
   'Set aside a small amount for savings first.',

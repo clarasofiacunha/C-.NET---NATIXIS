@@ -4,6 +4,7 @@ import type { AuthPageMode } from "./pages/auth/AuthPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import SessionPage from "./pages/auth/SessionPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
@@ -15,6 +16,7 @@ function getRoute(): AuthPageMode {
   )
     return "register";
   if (window.location.hash === "#forgot-password") return "forgot-password";
+  if (window.location.hash.startsWith("#reset-password")) return "reset-password";
   return "login";
 }
 
@@ -80,6 +82,8 @@ export default function App() {
         />
       ) : route === "forgot-password" ? (
         <ForgotPasswordPage onNavigate={navigate} />
+      ) : route === "reset-password" ? (
+        <ResetPasswordPage onNavigate={navigate} />
       ) : (
         <LoginPage
           onNavigate={navigate}
