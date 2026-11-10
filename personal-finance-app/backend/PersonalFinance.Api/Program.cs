@@ -21,6 +21,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IMonthlySummaryService, MonthlySummaryService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddCors(options =>

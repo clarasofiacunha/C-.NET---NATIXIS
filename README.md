@@ -2,7 +2,7 @@
 
 Aplicação web para **gestão de finanças pessoais**, desenvolvida em equipa. O objetivo é permitir que cada utilizador acompanhe contas, receitas, despesas, orçamentos mensais e metas de poupança num único local.
 
-> **Estado do projeto:** o backend já inclui autenticação, CRUD de contas, CRUD de transações, CRUD de orçamentos, alertas de orçamento, Swagger, testes xUnit, migrations e dados de demonstração. O **frontend ainda contém o ecrã inicial do Vite/React**, não uma interface financeira completa. As categorias, metas e dados de dashboard existem na base de dados/rotas de diagnóstico, mas isso **não significa que os respetivos módulos públicos estejam concluídos**.
+> **Estado do projeto:** o backend já inclui autenticação, CRUD de contas, CRUD de transações, CRUD de orçamentos, alertas de orçamento, API de resumo mensal, Swagger, testes xUnit, migrations e dados de demonstração. O **frontend ainda contém o ecrã inicial do Vite/React**, não uma interface financeira completa. As categorias, metas e dados de dashboard existem na base de dados/rotas de diagnóstico, mas isso **não significa que os respetivos módulos públicos estejam concluídos**.
 
 ## Índice
 
@@ -696,7 +696,60 @@ Os orçamentos aplicam-se a **categorias de despesa do próprio utilizador**. O 
 
 O endpoint de alertas apresenta categorias com gastos **a partir de 80% do limite** (`NearLimit`), ou que já **ultrapassaram 100%** (`Exceeded`). Inclui o limite, o montante gasto, o saldo restante e a percentagem de utilização. O cálculo utiliza as transações do utilizador da categoria e do mês correspondente. Trata-se de **alertas disponibilizados pela API**, não de notificações automáticas ou de uma interface frontend já concluída.
 
-### 7.7. Base de dados, DBeaver e endpoints de desenvolvimento
+### 7.7. API de resumo mensal (dashboard)
+
+A rota pública `GET /api/summary/monthly` apresenta, para o **utilizador autenticado**, o saldo total das contas, as despesas do mês e a percentagem de utilização dos orçamentos mensais. Não é necessária nenhuma migration adicional: utiliza as tabelas `Accounts`, `Transactions` e `Budgets` já existentes.
+
+**Parâmetros de consulta:**
+
+| Parâmetro | Obrigatório? | Significado |
+| --- | --- | --- |
+| `year` | Opcional, mas em conjunto com `month` | Ano, de 1 a 9999 |
+| `month` | Opcional, mas em conjunto com `year` | Mês, de 1 a 12 |
+
+Sem parâmetros, consulta o **mês atual em UTC**. Para selecionar um período específico, indica **ambos**: `GET /api/summary/monthly?year=2026&month=11`. Indicar apenas um ou valores inválidos devolve `400 Bad Request`. Sem sessão autenticada, a resposta é `401 Unauthorized`.
+
+Exemplo de resposta `200 OK` (valores ilustrativos):
+
+```json
+{
+  "year": 2026,
+  "month": 11,
+  "totalBalance": 1054.50,
+  "monthlyExpenses": 185.50,
+  "totalBudget": 300.00,
+  "budgetedExpenses": 110.50,
+  "budgetUsagePercentage": 36.83
+}
+```
+
+**Como são calculados os campos:**
+
+- `totalBalance` = soma dos saldos iniciais de **todas as contas do utilizador** + soma de **todas as receitas** registadas − soma de **todas as despesas** registadas. É o saldo contabilístico global dos movimentos guardados, **independente do mês consultado**; não representa um extrato bancário sincronizado. Movimentos com datas futuras já registados também entram neste saldo.
+- `monthlyExpenses` = soma de transações `Expense` no mês selecionado, **incluindo despesas em categorias sem orçamento**. Os limites do mês são interpretados em **UTC**: da meia-noite do primeiro dia até, mas sem incluir, a meia-noite do mês seguinte.
+- `totalBudget` = soma dos limites (`LimitAmount`) dos orçamentos das categorias para aquele mês e ano.
+- `budgetedExpenses` = despesas desse mês em categorias **com orçamento nesse mês** (evita que despesas de categorias sem orçamento distorçam a percentagem).
+- `budgetUsagePercentage` = `budgetedExpenses / totalBudget * 100`, arredondado a duas casas decimais. Se não existir orçamento para o mês, devolve `0` para evitar divisão por zero; se o limite for ultrapassado, o resultado pode ultrapassar `100`.
+
+Todos os cálculos são filtrados pelo identificador da **sessão autenticada**, nunca por um ID enviado no pedido. Se não houver contas, transações ou orçamentos, os respetivos valores são `0`.
+
+**Testar no Swagger:**
+
+1. Inicia PostgreSQL e backend conforme a secção 4 e abre <http://localhost:5185/swagger>.
+2. Executa `POST /auth/login` com um utilizador de demonstração (caso tenhas corrido o seed), no mesmo navegador do Swagger, para criar o cookie `pf.auth`.
+3. Abre `GET /api/summary/monthly`, clica em **Try it out**, preenche `year=2026` e `month=11` (ou deixa ambos vazios) e seleciona **Execute**.
+4. Compara `monthlyExpenses` com `GET /api/transactions?from=2026-11-01&to=2026-11-30&type=Expense` e `totalBudget` com `GET /api/budgets?year=2026&month=11`.
+5. Termina sessão em `POST /auth/logout` e volta a executar o resumo: deves obter `401`.
+
+Testes automatizados específicos, sem PostgreSQL:
+
+```powershell
+dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter "FullyQualifiedName~MonthlySummaryControllerTests|FullyQualifiedName~SwaggerEndpointsTests"
+```
+
+Cobrem os cálculos e arredondamento, mudança de mês, isolamento dos dados, mês atual por omissão, parâmetros inválidos, ausência de orçamentos e autorização do endpoint. A API está pronta para ser usada pelo frontend; **o ecrã React do dashboard ainda não está implementado**.
+
+### 7.8. Base de dados, DBeaver e endpoints de desenvolvimento
 
 **DBeaver** é opcional. Para visualizar as tabelas, cria uma ligação PostgreSQL com host `localhost`, porta definida em `POSTGRES_PORT` (por omissão `5432`), database/username/password iguais aos configurados no PostgreSQL; a base e o utilizador podem ser diferentes dos valores de exemplo. Na ligação, abre `Schemas → public → Tables → Accounts / Transactions / Categories / Budgets` e consulta a aba **Data**. Evita editar ou apagar diretamente os registos de desenvolvimento, salvo quando souberes o efeito.
 
@@ -713,9 +766,9 @@ As rotas `/dev/*` só devolvem dados no ambiente **Development**. Exemplos:
 | `GET /dev/users/{userId}/goals` | Metas desse utilizador |
 | `GET /dev/users/{userId}/dashboard?year=2026&month=11` | Resumo mensal de receitas, despesas e limites |
 
-**Atenção:** estes endpoints de diagnóstico mostram dados por ID e **não substituem APIs públicas protegidas por autenticação**. Só devem ser usados em ambiente de desenvolvimento. O CRUD público de categorias, o dashboard público e o CRUD de metas **não estão implementados no código analisado**.
+**Atenção:** estes endpoints de diagnóstico mostram dados por ID e **não substituem APIs públicas protegidas por autenticação**. Só devem ser usados em ambiente de desenvolvimento. O CRUD público de categorias, **a interface do dashboard** e o CRUD de metas **não estão implementados no código analisado**; o resumo mensal já existe em `/api/summary/monthly`.
 
-### 7.8. Testes automatizados com xUnit
+### 7.9. Testes automatizados com xUnit
 
 Os testes xUnit são executados pelo SDK .NET, sem precisar de iniciar manualmente a API. Vários testes do CRUD utilizam a base InMemory em vez de PostgreSQL, enquanto testes do Swagger verificam o comportamento da aplicação de teste.
 
@@ -734,13 +787,16 @@ dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter 
 # Apenas testes de transações e Swagger
 dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter "FullyQualifiedName~TransactionsControllerTests|FullyQualifiedName~SwaggerEndpointsTests"
 
+# Apenas testes do resumo mensal e Swagger
+dotnet test backend/PersonalFinance.Tests/PersonalFinance.Tests.csproj --filter "FullyQualifiedName~MonthlySummaryControllerTests|FullyQualifiedName~SwaggerEndpointsTests"
+
 # Também podes executar testes da solução
 dotnet test PersonalFinance.slnx
 ```
 
 O projeto contém ainda testes de registo, login, validação de pedidos de orçamento e classificação de alertas. **Um comando documentado não significa que os testes passaram:** confirma o resultado `Passed` no teu terminal e resolve eventuais falhas antes de abrir o Pull Request.
 
-### 7.9. Testes HTTP de ponta a ponta em PowerShell
+### 7.10. Testes HTTP de ponta a ponta em PowerShell
 
 Ao contrário do xUnit, estes scripts exigem a **API a correr**, o **PostgreSQL ligado**, a migration aplicada e os **utilizadores do seed criados**.
 
@@ -776,7 +832,7 @@ Caso uses outra porta, os scripts aceitam o argumento `-BaseUrl`:
 
 **Testes HTTP têm efeitos na BD de desenvolvimento.** Não os executes contra produção nem contra uma base com dados reais.
 
-### 7.10. Outras verificações
+### 7.11. Outras verificações
 
 ```powershell
 # Frontend — análise estática e build
@@ -962,7 +1018,7 @@ Prioridades do projeto (MoSCoW):
 | CRUD de transações | **Implementado no backend**, com filtros e validações. |
 | CRUD de orçamentos e alertas | **Implementado no backend**, incluindo alertas a partir de 80%. |
 | Categorias | Modelo, tabelas e dados de demonstração existentes; **sem CRUD público** nesta versão. |
-| Dashboard | Resumo disponível em **`/dev`**, sem endpoint público de dashboard nesta versão. |
+| Dashboard | **API pública de resumo mensal implementada** em `GET /api/summary/monthly`; interface React ainda por desenvolver. |
 | Metas de poupança | Modelo e dados de demonstração existentes; **sem CRUD público** nesta versão. |
 | Recuperação de password | **Planeada**, não identificada no `AuthController` atual. |
 | Interface React funcional | **Por desenvolver**; o template inicial do Vite está presente. |
