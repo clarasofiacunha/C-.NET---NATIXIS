@@ -36,6 +36,13 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Brevo__SmtpHost: ${SMTP_HOST}
+      Brevo__SmtpPort: ${SMTP_PORT}
+      Brevo__SmtpUsername: ${SMTP_USERNAME}
+      Brevo__SmtpPassword: ${SMTP_PASSWORD}
+      Brevo__SenderEmail: ${SMTP_FROM_EMAIL}
+      Brevo__SenderName: ${SMTP_FROM_NAME}
+      Brevo__FrontendBaseUrl: ${SMTP_FRONTEND_BASE_URL:-http://localhost:5173}
 
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"

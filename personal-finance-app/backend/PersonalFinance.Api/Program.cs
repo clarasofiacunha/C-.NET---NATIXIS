@@ -25,10 +25,8 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IMonthlySummaryService, MonthlySummaryService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoOptions.SectionName));
-builder.Services.AddHttpClient<IRecoveryEmailSender, BrevoRecoveryEmailSender>(client =>
-{
-    client.BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress);
-});
+builder.Services.AddSingleton<ISmtpEmailClientFactory, SmtpEmailClientFactory>();
+builder.Services.AddScoped<IRecoveryEmailSender, BrevoRecoveryEmailSender>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -1,5 +1,4 @@
-using System.Net;
-using System.Text.Json;
+using System.Net.Mail;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PersonalFinance.Api.Services;
@@ -9,36 +8,31 @@ namespace PersonalFinance.Tests;
 public class BrevoRecoveryEmailSenderTests
 {
     [Fact]
-    public async Task SendPasswordResetAsync_EnviaPedidoBrevoComHeaderEPayloadEsperados()
+    public async Task SendPasswordResetAsync_EnviaMensagemSmtpComParametrosEsperados()
     {
-        var handler = new RecordingHandler(HttpStatusCode.Accepted);
-        using var client = new HttpClient(handler) { BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress) };
-        var sender = CreateSender(client);
+        var smtpClient = new RecordingSmtpEmailClient();
+        var sender = CreateSender(smtpClient);
         var link = new Uri("https://app.example/#reset-password?email=user%40example.com&token=token-secreto");
 
         await sender.SendPasswordResetAsync("user@example.com", link);
 
-        Assert.NotNull(handler.Request);
-        Assert.Equal(HttpMethod.Post, handler.Request!.Method);
-        Assert.Equal("https://api.brevo.com/v3/smtp/email", handler.Request.RequestUri!.AbsoluteUri);
-        Assert.Equal("brevo-test-key", handler.Request.Headers.GetValues("api-key").Single());
-
-        using var document = JsonDocument.Parse(handler.Body!);
-        Assert.Equal("sender@example.com", document.RootElement.GetProperty("sender").GetProperty("email").GetString());
-        Assert.Equal("user@example.com", document.RootElement.GetProperty("to")[0].GetProperty("email").GetString());
+        Assert.Equal("sender@example.com", smtpClient.FromEmail);
+        Assert.Equal("Personal Finance", smtpClient.FromName);
+        Assert.Equal("user@example.com", smtpClient.RecipientEmail);
+        Assert.Equal("Recuperação da palavra-passe", smtpClient.Subject);
+        Assert.True(smtpClient.IsBodyHtml);
         Assert.Contains(
             "https://app.example/#reset-password?email=user%40example.com&amp;token=token-secreto",
-            document.RootElement.GetProperty("htmlContent").GetString());
+            smtpClient.Body);
     }
 
     [Fact]
-    public async Task SendPasswordResetAsync_RespostaFalhada_DevolveErroControlado()
+    public async Task SendPasswordResetAsync_FalhaSmtp_DevolveErroControlado()
     {
-        using var client = new HttpClient(new RecordingHandler(HttpStatusCode.BadRequest))
+        var sender = CreateSender(new RecordingSmtpEmailClient
         {
-            BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress)
-        };
-        var sender = CreateSender(client);
+            ExceptionToThrow = new SmtpException("SMTP rejected the message.")
+        });
 
         var exception = await Assert.ThrowsAsync<RecoveryEmailDeliveryException>(() =>
             sender.SendPasswordResetAsync("user@example.com", new Uri("https://app.example/#reset-password?token=secret")));
@@ -49,39 +43,60 @@ public class BrevoRecoveryEmailSenderTests
     [Fact]
     public async Task SendPasswordResetAsync_ConfiguracaoEmFalta_DevolveErroControlado()
     {
-        using var client = new HttpClient(new RecordingHandler(HttpStatusCode.Accepted));
         var sender = new BrevoRecoveryEmailSender(
-            client,
             Options.Create(new BrevoOptions()),
+            new RecordingSmtpEmailClientFactory(new RecordingSmtpEmailClient()),
             NullLogger<BrevoRecoveryEmailSender>.Instance);
 
         await Assert.ThrowsAsync<RecoveryEmailDeliveryException>(() =>
             sender.SendPasswordResetAsync("user@example.com", new Uri("https://app.example/reset")));
     }
 
-    private static BrevoRecoveryEmailSender CreateSender(HttpClient client) => new(
-        client,
+    private static BrevoRecoveryEmailSender CreateSender(RecordingSmtpEmailClient smtpClient) => new(
         Options.Create(new BrevoOptions
         {
-            ApiKey = "brevo-test-key",
+            SmtpHost = "smtp-relay.brevo.com",
+            SmtpPort = 587,
+            SmtpUsername = "login@smtp-brevo.com",
+            SmtpPassword = "smtp-test-key",
             SenderEmail = "sender@example.com",
             SenderName = "Personal Finance",
             FrontendBaseUrl = "https://app.example"
         }),
+        new RecordingSmtpEmailClientFactory(smtpClient),
         NullLogger<BrevoRecoveryEmailSender>.Instance);
 
-    private sealed class RecordingHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    private sealed class RecordingSmtpEmailClientFactory(RecordingSmtpEmailClient client) : ISmtpEmailClientFactory
     {
-        public HttpRequestMessage? Request { get; private set; }
-        public string? Body { get; private set; }
+        public ISmtpEmailClient Create(BrevoOptions settings) => client;
+    }
 
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
+    private sealed class RecordingSmtpEmailClient : ISmtpEmailClient
+    {
+        public Exception? ExceptionToThrow { get; init; }
+        public string? FromEmail { get; private set; }
+        public string? FromName { get; private set; }
+        public string? RecipientEmail { get; private set; }
+        public string? Subject { get; private set; }
+        public string? Body { get; private set; }
+        public bool IsBodyHtml { get; private set; }
+
+        public Task SendAsync(MailMessage message, CancellationToken cancellationToken)
         {
-            Request = request;
-            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(statusCode);
+            FromEmail = message.From?.Address;
+            FromName = message.From?.DisplayName;
+            RecipientEmail = message.To.Single().Address;
+            Subject = message.Subject;
+            Body = message.Body;
+            IsBodyHtml = message.IsBodyHtml;
+
+            return ExceptionToThrow is null
+                ? Task.CompletedTask
+                : Task.FromException(ExceptionToThrow);
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

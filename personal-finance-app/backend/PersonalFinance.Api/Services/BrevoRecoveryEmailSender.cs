@@ -1,17 +1,14 @@
 using System.Net;
-using System.Net.Http.Json;
+using System.Net.Mail;
 using Microsoft.Extensions.Options;
 
 namespace PersonalFinance.Api.Services;
 
 public sealed class BrevoRecoveryEmailSender(
-    HttpClient httpClient,
     IOptions<BrevoOptions> options,
+    ISmtpEmailClientFactory smtpClientFactory,
     ILogger<BrevoRecoveryEmailSender> logger) : IRecoveryEmailSender
 {
-    public const string ApiBaseAddress = "https://api.brevo.com/";
-    private const string SendEmailPath = "v3/smtp/email";
-
     public async Task SendPasswordResetAsync(
         string recipientEmail,
         Uri resetLink,
@@ -26,31 +23,19 @@ public sealed class BrevoRecoveryEmailSender(
         if (!resetLink.IsAbsoluteUri)
             throw new RecoveryEmailDeliveryException("O link de recuperação é inválido.");
 
-        var sender = new { email = settings.SenderEmail!, name = settings.SenderName };
-        var payload = new
+        using var message = new MailMessage
         {
-            sender,
-            to = new[] { new { email = recipientEmail } },
-            subject = "Recuperação da palavra-passe",
-            htmlContent = CreateHtmlContent(resetLink)
+            From = new MailAddress(settings.SenderEmail!, settings.SenderName),
+            Subject = "Recuperação da palavra-passe",
+            Body = CreateHtmlContent(resetLink),
+            IsBodyHtml = true
         };
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, SendEmailPath)
-        {
-            Content = JsonContent.Create(payload)
-        };
-        request.Headers.Add("api-key", settings.ApiKey);
+        message.To.Add(recipientEmail);
 
         try
         {
-            using var response = await httpClient.SendAsync(request, cancellationToken);
-            if (response.IsSuccessStatusCode)
-                return;
-
-            // Do not log the request URI, body, recipient, reset token or API key.
-            logger.LogWarning("Brevo rejected a password recovery email with status code {StatusCode}.",
-                (int)response.StatusCode);
-            throw new RecoveryEmailDeliveryException("Não foi possível enviar o email de recuperação.");
+            using var smtpClient = smtpClientFactory.Create(settings);
+            await smtpClient.SendAsync(message, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -60,16 +45,20 @@ public sealed class BrevoRecoveryEmailSender(
         {
             throw;
         }
-        catch (HttpRequestException exception)
+        catch (SmtpException exception)
         {
-            logger.LogWarning(exception, "Brevo could not be reached for a password recovery email.");
+            // Do not log the recipient, reset link, SMTP password, or SMTP username.
+            logger.LogWarning(exception, "Brevo SMTP could not deliver a password recovery email.");
             throw new RecoveryEmailDeliveryException("Não foi possível enviar o email de recuperação.", exception);
         }
     }
 
     private static void ValidateSettings(BrevoOptions settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.ApiKey) ||
+        if (string.IsNullOrWhiteSpace(settings.SmtpHost) ||
+            settings.SmtpPort is < 1 or > 65535 ||
+            string.IsNullOrWhiteSpace(settings.SmtpUsername) ||
+            string.IsNullOrWhiteSpace(settings.SmtpPassword) ||
             string.IsNullOrWhiteSpace(settings.SenderEmail))
         {
             throw new RecoveryEmailDeliveryException(
