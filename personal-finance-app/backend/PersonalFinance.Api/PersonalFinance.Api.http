@@ -1,10 +1,47 @@
 @PersonalFinance.Api_HostAddress = http://localhost:5185
 @budgetId = 00000000-0000-0000-0000-000000000001
 @expenseCategoryId = 00000000-0000-0000-0000-000000000002
+@categoryId = 00000000-0000-0000-0000-000000000003
 @authCookie = replace-with-authenticated-cookie
 
 GET {{PersonalFinance.Api_HostAddress}}/weatherforecast/
 Accept: application/json
+
+###
+
+### Listar categorias
+GET {{PersonalFinance.Api_HostAddress}}/api/categories
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
+### Obter uma categoria
+GET {{PersonalFinance.Api_HostAddress}}/api/categories/{{categoryId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Accept: application/json
+
+### Criar categoria de despesa
+POST {{PersonalFinance.Api_HostAddress}}/api/categories
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Content-Type: application/json
+
+{
+  "name": "Alimentação",
+  "type": "Expense"
+}
+
+### Atualizar categoria
+PUT {{PersonalFinance.Api_HostAddress}}/api/categories/{{categoryId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
+Content-Type: application/json
+
+{
+  "name": "Transportes",
+  "type": "Expense"
+}
+
+### Eliminar categoria (409 se tiver transações ou orçamentos)
+DELETE {{PersonalFinance.Api_HostAddress}}/api/categories/{{categoryId}}
+Cookie: .AspNetCore.Identity.Application={{authCookie}}
 
 ###
 

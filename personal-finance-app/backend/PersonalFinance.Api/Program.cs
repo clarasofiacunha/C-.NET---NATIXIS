@@ -23,6 +23,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<IMonthlySummaryService, MonthlySummaryService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddCors(options =>
 {
