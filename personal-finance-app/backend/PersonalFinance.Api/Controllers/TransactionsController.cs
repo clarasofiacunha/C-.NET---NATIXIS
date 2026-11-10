@@ -45,44 +45,6 @@ public sealed class TransactionsController(ITransactionService transactions) : C
         if (result.InvalidRequest) return BadRequest(new { error = result.Error });
         if (result.Transaction is null) return NotFound(new { error = result.Error });
         return CreatedAtAction(nameof(GetById), new { id = result.Transaction.Id }, result.Transaction);
-        if (!TryValidateRequest(request, out var values, out var error))
-            return BadRequest(new { error });
-
-        var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == values.AccountId && a.UserId == userId)
-            .Select(a => new { a.Name })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (account is null) return NotFound(new { error = "Conta nao encontrada." });
-
-        var category = await db.Categories.AsNoTracking()
-            .Where(c => c.Id == values.CategoryId && c.UserId == userId)
-            .Select(c => new { c.Name })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-
-        var transaction = new FinanceTransaction
-        {
-            UserId = userId,
-            AccountId = values.AccountId,
-            CategoryId = values.CategoryId,
-            Amount = values.Amount,
-            Type = values.Type,
-            Date = values.Date.UtcDateTime,
-            Description = NormalizeDescription(request.Description)
-        };
-
-        db.Transactions.Add(transaction);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
-        {
-            return NotFound(new { error = "A conta ou a categoria ja nao existe." });
-        }
-
-        return CreatedAtAction(nameof(GetById), new { id = transaction.Id },
-            ToResponse(transaction, account.Name, category.Name));
     }
 
     [HttpPut("{id:guid}")]
@@ -95,46 +57,6 @@ public sealed class TransactionsController(ITransactionService transactions) : C
         if (result.Transaction is null)
             return result.Error is null ? NotFound() : NotFound(new { error = result.Error });
         return Ok(result.Transaction);
-        if (!TryValidateRequest(request, out var values, out var error))
-            return BadRequest(new { error });
-
-        var transaction = await db.Transactions
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
-        if (transaction is null) return NotFound();
-
-        var account = await db.Accounts.AsNoTracking()
-            .Where(a => a.Id == values.AccountId && a.UserId == userId)
-            .Select(a => new { a.Name })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (account is null) return NotFound(new { error = "Conta nao encontrada." });
-
-        var category = await db.Categories.AsNoTracking()
-            .Where(c => c.Id == values.CategoryId && c.UserId == userId)
-            .Select(c => new { c.Name })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
-
-        transaction.AccountId = values.AccountId;
-        transaction.CategoryId = values.CategoryId;
-        transaction.Amount = values.Amount;
-        transaction.Type = values.Type;
-        transaction.Date = values.Date.UtcDateTime;
-        transaction.Description = NormalizeDescription(request.Description);
-
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return NotFound();
-        }
-        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
-        {
-            return NotFound(new { error = "A conta ou a categoria ja nao existe." });
-        }
-
-        return Ok(ToResponse(transaction, account.Name, category.Name));
     }
 
     [HttpDelete("{id:guid}")]
@@ -147,66 +69,4 @@ public sealed class TransactionsController(ITransactionService transactions) : C
 
     private bool TryGetUserId(out Guid userId) =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
-    private static TransactionResponseDto ToResponse(
-        FinanceTransaction t, string accountName, string categoryName) =>
-        new(t.Id, t.AccountId, accountName, t.CategoryId, categoryName,
-            t.Amount, t.Type, t.Date, t.Description);
-
-    private static string? NormalizeDescription(string? description) =>
-        string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-
-    private static bool IsForeignKeyViolation(DbUpdateException ex) =>
-        ex.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.ForeignKeyViolation };
-
-    private static bool TryValidateRequest(
-        TransactionRequestDto request,
-        out ValidatedTransactionRequest values,
-        out string? error)
-    {
-        if (request.AccountId is not Guid accountId || accountId == Guid.Empty ||
-            request.CategoryId is not Guid categoryId || categoryId == Guid.Empty)
-        {
-            values = default;
-            error = "A conta e a categoria devem ter identificadores validos.";
-            return false;
-        }
-        if (request.Type is not TransactionType type || !Enum.IsDefined(type))
-        {
-            values = default;
-            error = "O tipo deve ser Income ou Expense.";
-            return false;
-        }
-        if (request.Amount is not decimal amount || amount <= 0m ||
-            amount > 9999999999999999.99m ||
-            decimal.Round(amount, 2) != amount)
-        {
-            values = default;
-            error = "O montante deve ser positivo e ter, no maximo, duas casas decimais.";
-            return false;
-        }
-        if (request.Date is not DateTimeOffset date)
-        {
-            values = default;
-            error = "A data e obrigatoria.";
-            return false;
-        }
-        if (request.Description?.Length > 500)
-        {
-            values = default;
-            error = "A descricao nao pode exceder 500 caracteres.";
-            return false;
-        }
-
-        values = new ValidatedTransactionRequest(accountId, categoryId, amount, type, date);
-        error = null;
-        return true;
-    }
-
-    private readonly record struct ValidatedTransactionRequest(
-        Guid AccountId,
-        Guid CategoryId,
-        decimal Amount,
-        TransactionType Type,
-        DateTimeOffset Date);
 }

@@ -38,8 +38,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         if (!TryValidateRequest(request, out var error)) return new(null, error, true);
         var references = await GetReferencesAsync(userId, request, cancellationToken);
         if (references is null) return new(null, "A conta ou a categoria nao foi encontrada.");
-        if (references.Value.CategoryType != request.Type!.Value)
-            return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
+        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
 
         var transaction = new FinanceTransaction
         {
@@ -63,8 +62,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         if (transaction is null) return new(null, null);
         var references = await GetReferencesAsync(userId, request, cancellationToken);
         if (references is null) return new(null, "A conta ou a categoria nao foi encontrada.");
-        if (references.Value.CategoryType != request.Type!.Value)
-            return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
+        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
 
         transaction.AccountId = request.AccountId!.Value; transaction.CategoryId = request.CategoryId!.Value;
         transaction.Amount = request.Amount!.Value; transaction.Type = request.Type.Value;
