@@ -1,7 +1,7 @@
 # CRUD de contas — implementação e testes
 
-Esta implementação usa o modelo `Account` existente e a migration `InitialCreate`.
-**Não precisas de criar outra migration.**
+Esta implementação usa o modelo `Account` e migrations do Entity Framework Core.
+As alterações de schema devem ser aplicadas com `dotnet ef database update`.
 
 ## 1. Corrigir o diretório no PowerShell
 
@@ -113,10 +113,10 @@ locais previstas no projeto.
 
 | Método | Rota | Resposta de sucesso | Comportamento |
 | --- | --- | --- | --- |
-| GET | `/api/accounts` | 200 | Lista apenas as contas do utilizador autenticado. |
-| GET | `/api/accounts/{id}` | 200 | Devolve uma conta do utilizador. |
+| GET | `/api/accounts` | 200 | Lista apenas as contas do utilizador autenticado, com saldo inicial e atual. |
+| GET | `/api/accounts/{id}` | 200 | Devolve uma conta do utilizador, com saldo inicial e atual. |
 | POST | `/api/accounts` | 201 + `Location` | Cria uma conta para o utilizador autenticado. |
-| PUT | `/api/accounts/{id}` | 200 | Atualiza nome, tipo e saldo inicial. |
+| PUT | `/api/accounts/{id}` | 200 | Atualiza nome, tipo e saldo inicial; o saldo atual mantém os efeitos das transações. |
 | DELETE | `/api/accounts/{id}` | 204 | Elimina uma conta sem transações. |
 
 `id` é um UUID (GUID). O JSON de criação/edição:
@@ -134,9 +134,14 @@ Tipos suportados: `Checking` (à ordem), `Savings` (poupança), `Cash` (numerár
 `initialBalance` é obrigatório, decimal com até 2 casas decimais, e pode ser
 negativo (por exemplo, conta com descoberto).
 
+As respostas incluem `initialBalance` e `balance`. O saldo inicial é o ponto
+de partida; o saldo atual é ajustado atomicamente com cada transação criada,
+editada ou eliminada. Alterar o saldo inicial ajusta o saldo atual pelo mesmo
+delta, sem remover os efeitos das transações registadas.
+
 Códigos de erro: **400** (validação), **401** (sem sessão), **404** (inexistente
-ou pertence a outro utilizador), **409** (tentativa de apagar uma conta com
-transações). Nunca se aceita `userId` da pessoa que chama o CRUD: é obtido
+ou pertence a outro utilizador), **409** (tentativa de apagar conta com
+transações ou conflito de edição concorrente). Nunca se aceita `userId` da pessoa que chama o CRUD: é obtido
 exclusivamente a partir do cookie autenticado.
 
 ## 8. Exemplos no PowerShell
@@ -190,6 +195,5 @@ a tabela, o relacionamento com o dono, a precisão decimal do saldo e as FKs.
 A eliminação de uma conta com transações é proibida pelo desenho da BD
 (`DeleteBehavior.Restrict`); a API traduz essa situação para HTTP 409.
 
-**Fora de escopo desta tarefa:** cálculos de saldo atual incluindo transações,
-transferências e fecho/arquivamento de contas, páginas React de gestão de
-contas, login definitivo para produção e proteção CSRF da futura sessão web.
+**Fora de escopo desta tarefa:** páginas React de gestão de contas,
+login definitivo para produção e proteção CSRF da futura sessão web.

@@ -7,7 +7,8 @@ receitas (`Income`) e despesas (`Expense`), com filtros opcionais por intervalo 
 
 **Esta tarefa e de backend.** O modelo `FinanceTransaction`, o enum `TransactionType`,
 o `DbSet<FinanceTransaction> Transactions` e a migration `InitialCreate` ja existem.
-**Nao e necessario adicionar uma migration** para este CRUD.
+A atualização automática do saldo persiste o saldo atual da conta e requer aplicar
+a migration `PersistAccountBalance` com `dotnet ef database update`.
 
 ## 2. Ficheiros criados e alterados
 
@@ -91,6 +92,11 @@ pedido deve usar ISO 8601 com `Z` ou um offset (por exemplo `+01:00`).
 
 O modelo atual guarda montantes positivos para ambos os tipos; o sinal de uma
 despesa e aplicado quando se calculam saldos/relatorios, nao na coluna `Amount`.
+Cada escrita atualiza a transacao e o saldo atual da conta na mesma operacao
+de persistencia. Receitas aumentam o saldo e despesas reduzem-no; edicoes
+revertem o efeito anterior antes de aplicar o novo, inclusive quando a conta
+associada muda. Eliminacoes repõem o efeito da transacao removida. Conflitos
+concorrentes de saldo devolvem HTTP 409, sem persistir apenas metade da operacao.
 
 ## 5. Como executar localmente (PowerShell)
 
@@ -176,6 +182,8 @@ git push -u origin feature/crud-transacoes
   excluir transacoes efetuadas a noite do ultimo dia.
 - **`DateTimeOffset` no pedido:** converte offsets recebidos para UTC, compativel
   com a coluna PostgreSQL `timestamp with time zone`.
-- **Sem nova migration:** esta tarefa adiciona API, nao altera o esquema da BD.
+- **EF Core:** persiste a transação e o saldo no mesmo `SaveChangesAsync`; no PostgreSQL,
+  o EF Core executa as alterações numa transação. Um token de concorrência na conta
+  impede que pedidos simultâneos percam atualizações.
 - **Testes InMemory:** cobrem logica sem depender de Docker; o script PowerShell
   exercita os pedidos HTTP reais contra PostgreSQL.

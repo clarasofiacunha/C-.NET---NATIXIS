@@ -26,6 +26,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             e.Property(x => x.Name).HasMaxLength(120).IsRequired();
             e.Property(x => x.InitialBalance).HasPrecision(18, 2);
+            e.Property(x => x.Balance).HasPrecision(18, 2);
+            e.Property(x => x.Version).IsConcurrencyToken();
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(30);
             e.HasOne(x => x.User).WithMany(x => x.Accounts).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.UserId, x.Id }).IsUnique();

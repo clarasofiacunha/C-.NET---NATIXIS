@@ -49,7 +49,8 @@ public sealed class AccountsControllerTests
         UserId = userId,
         Name = name,
         Type = AccountType.Checking,
-        InitialBalance = 100m
+        InitialBalance = 100m,
+        Balance = 100m
     };
 
     [Fact]
@@ -73,6 +74,7 @@ public sealed class AccountsControllerTests
         var account = Assert.IsType<AccountResponseDto>(created.Value);
         Assert.Equal("Poupança", account.Name);
         Assert.Equal(AccountType.Savings, account.Type);
+        Assert.Equal(1500m, account.Balance);
         Assert.Equal(userId, (await db.Accounts.SingleAsync()).UserId);
     }
 
@@ -179,6 +181,38 @@ public sealed class AccountsControllerTests
         var saved = await db.Accounts.SingleAsync();
         Assert.Equal(AccountType.Savings, saved.Type);
         Assert.Equal(200m, saved.InitialBalance);
+        Assert.Equal(200m, saved.Balance);
+    }
+
+    [Fact]
+    public async Task Update_InitialBalance_PreservesRecordedTransactionEffects()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        db.Users.Add(NewUser(userId));
+        var account = NewAccount(userId);
+        account.Balance = 90m;
+        var category = new Category
+        {
+            UserId = userId, Name = "Alimentação", Type = TransactionType.Expense
+        };
+        db.Accounts.Add(account);
+        db.Categories.Add(category);
+        db.Transactions.Add(new FinanceTransaction
+        {
+            UserId = userId, Account = account, Category = category,
+            Amount = 10m, Type = TransactionType.Expense, Date = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        await NewController(db, userId).Update(account.Id, new AccountRequestDto
+        {
+            Name = account.Name,
+            Type = account.Type,
+            InitialBalance = 200m
+        }, CancellationToken.None);
+
+        Assert.Equal(190m, (await db.Accounts.SingleAsync()).Balance);
     }
 
     [Fact]

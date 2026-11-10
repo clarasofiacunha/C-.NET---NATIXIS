@@ -51,7 +51,7 @@ public sealed class TransactionsControllerTests
         var account = new Account
         {
             UserId = userId, Name = "Conta à ordem", Type = AccountType.Checking,
-            InitialBalance = 100m
+            InitialBalance = 100m, Balance = 100m
         };
         var expense = new Category { UserId = userId, Name = "Alimentação", Type = TransactionType.Expense };
         var income = new Category { UserId = userId, Name = "Salário", Type = TransactionType.Income };
@@ -105,6 +105,20 @@ public sealed class TransactionsControllerTests
         var saved = await db.Transactions.SingleAsync();
         Assert.Equal(userId, saved.UserId);
         Assert.Equal(DateTimeKind.Utc, saved.Date.Kind);
+        Assert.Equal(79.50m, (await db.Accounts.SingleAsync()).Balance);
+    }
+
+    [Fact]
+    public async Task Create_IncomeTransaction_IncreasesAccountBalance()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (account, _, income) = Seed(db, userId);
+
+        await NewController(db, userId).Create(
+            Request(account, income, 250m, TransactionType.Income), CancellationToken.None);
+
+        Assert.Equal(350m, (await db.Accounts.SingleAsync()).Balance);
     }
 
     [Fact]
@@ -207,6 +221,7 @@ public sealed class TransactionsControllerTests
         await using var db = NewDatabase();
         var userId = Guid.NewGuid();
         var (account, expense, income) = Seed(db, userId);
+        account.Balance = 90m;
         var transaction = Transaction(userId, account, expense, 10m, DateTime.UtcNow);
         db.Transactions.Add(transaction);
         await db.SaveChangesAsync();
@@ -220,6 +235,48 @@ public sealed class TransactionsControllerTests
         Assert.Equal(300m, saved.Amount);
         Assert.Equal(income.Id, saved.CategoryId);
         Assert.Equal(TransactionType.Income, saved.Type);
+        Assert.Equal(400m, (await db.Accounts.SingleAsync()).Balance);
+    }
+
+    [Fact]
+    public async Task Update_ExpenseAmount_RecalculatesAccountBalance()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (account, expense, _) = Seed(db, userId);
+        account.Balance = 950m;
+        var transaction = Transaction(userId, account, expense, 50m, DateTime.UtcNow);
+        db.Transactions.Add(transaction);
+        await db.SaveChangesAsync();
+
+        await NewController(db, userId).Update(transaction.Id,
+            Request(account, expense, 80m), CancellationToken.None);
+
+        Assert.Equal(920m, (await db.Accounts.SingleAsync()).Balance);
+    }
+
+    [Fact]
+    public async Task Update_MoveToAnotherAccount_AdjustsBothBalances()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (sourceAccount, expense, _) = Seed(db, userId);
+        sourceAccount.Balance = 950m;
+        var destinationAccount = new Account
+        {
+            UserId = userId, Name = "Poupança", Type = AccountType.Savings,
+            InitialBalance = 300m, Balance = 300m
+        };
+        db.Accounts.Add(destinationAccount);
+        var transaction = Transaction(userId, sourceAccount, expense, 50m, DateTime.UtcNow);
+        db.Transactions.Add(transaction);
+        await db.SaveChangesAsync();
+
+        await NewController(db, userId).Update(transaction.Id,
+            Request(destinationAccount, expense, 80m, TransactionType.Income), CancellationToken.None);
+
+        Assert.Equal(1000m, (await db.Accounts.SingleAsync(a => a.Id == sourceAccount.Id)).Balance);
+        Assert.Equal(380m, (await db.Accounts.SingleAsync(a => a.Id == destinationAccount.Id)).Balance);
     }
 
     [Fact]
@@ -357,6 +414,7 @@ public sealed class TransactionsControllerTests
         await using var db = NewDatabase();
         var userId = Guid.NewGuid();
         var (account, expense, _) = Seed(db, userId);
+        account.Balance = 90m;
         var transaction = Transaction(userId, account, expense, 10m, DateTime.UtcNow);
         db.Transactions.Add(transaction);
         await db.SaveChangesAsync();
@@ -366,6 +424,7 @@ public sealed class TransactionsControllerTests
 
         Assert.IsType<NoContentResult>(result);
         Assert.Empty(db.Transactions);
+        Assert.Equal(100m, (await db.Accounts.SingleAsync()).Balance);
     }
 
     [Fact]

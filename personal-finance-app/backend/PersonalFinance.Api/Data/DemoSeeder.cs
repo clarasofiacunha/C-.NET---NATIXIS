@@ -47,6 +47,7 @@ public static class DemoSeeder
 
             var checking = new Account { UserId = user.Id, Name = "Conta à ordem", Type = AccountType.Checking, InitialBalance = 2000m };
             var savings = new Account { UserId = user.Id, Name = "Poupança", Type = AccountType.Savings, InitialBalance = 1000m };
+            var checkingBalance = checking.InitialBalance;
             var categories = expenseNames.Select(n => new Category { UserId = user.Id, Name = n, Type = TransactionType.Expense }).ToList();
             var income = new Category { UserId = user.Id, Name = profiles[i].Variable ? "Trabalho independente" : "Salário", Type = TransactionType.Income };
             db.Accounts.AddRange(checking, savings);
@@ -57,6 +58,7 @@ public static class DemoSeeder
             {
                 var date = start.AddMonths(month);
                 var salary = profiles[i].Variable ? rng.Next(900, 3201) : profiles[i].Salary;
+                checkingBalance += salary;
                 db.Transactions.Add(new FinanceTransaction { UserId = user.Id, Account = checking, Category = income, Type = TransactionType.Income, Amount = salary, Date = date, Description = profiles[i].Variable ? "Prestação de serviços" : "Salário / rendimento" });
                 for (int c = 0; c < categories.Count; c++)
                 {
@@ -69,12 +71,14 @@ public static class DemoSeeder
                         var scale = c == 0 ? 0.55m : c == 1 ? 0.18m : 0.24m;
                         var factor = (decimal)(0.55 + rng.NextDouble() * 0.9);
                         var amount = decimal.Round(Math.Max(1m, budget * scale * factor), 2);
+                        checkingBalance -= amount;
                         var day = rng.Next(1, DateTime.DaysInMonth(date.Year, date.Month) + 1);
                         var descriptions = expenseDescriptions[category.Name];
                         db.Transactions.Add(new FinanceTransaction { UserId = user.Id, Account = checking, Category = category, Type = TransactionType.Expense, Amount = amount, Date = new DateTime(date.Year, date.Month, day, 12, 0, 0, DateTimeKind.Utc), Description = descriptions[rng.Next(descriptions.Length)] });
                     }
                 }
             }
+            checking.Balance = checkingBalance;
             db.Goals.AddRange(
                 new Goal { UserId = user.Id, Name = "Fundo de emergência", TargetAmount = 3000m, CurrentAmount = 950m, Deadline = new DateTime(2027, 12, 31, 12, 0, 0, DateTimeKind.Utc) },
                 new Goal { UserId = user.Id, Name = "Viagem", TargetAmount = 1200m, CurrentAmount = 430m, Deadline = new DateTime(2027, 7, 1, 12, 0, 0, DateTimeKind.Utc) }
