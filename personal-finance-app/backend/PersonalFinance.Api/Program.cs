@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
@@ -27,6 +28,20 @@ builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection(BrevoO
 builder.Services.AddHttpClient<IRecoveryEmailSender, BrevoRecoveryEmailSender>(client =>
 {
     client.BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress);
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("password-recovery", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 builder.Services.AddCors(options =>
@@ -114,6 +129,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("LocalFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
