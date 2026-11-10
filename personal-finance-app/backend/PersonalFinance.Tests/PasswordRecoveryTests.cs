@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using PersonalFinance.Api.Data;
 using PersonalFinance.Api.Models;
 using PersonalFinance.Api.Services;
@@ -63,6 +64,29 @@ public class PasswordRecoveryTests : IClassFixture<PasswordRecoveryWebApplicatio
         var response = await client.PostAsJsonAsync("/auth/forgot-password", new { email = "nao-e-email" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_FalhaNoEnvio_DevolveRespostaGenericaSemExporToken()
+    {
+        var email = NewEmail();
+        await RegisterAsync(email);
+        factory.EmailSender.ExceptionToThrow = new RecoveryEmailDeliveryException("Brevo unavailable.");
+
+        try
+        {
+            var response = await client.PostAsJsonAsync("/auth/forgot-password", new { email });
+            var body = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("Se existir uma conta", body);
+            Assert.DoesNotContain("token", body, StringComparison.OrdinalIgnoreCase);
+            Assert.Single(factory.EmailSender.Links);
+        }
+        finally
+        {
+            factory.EmailSender.ExceptionToThrow = null;
+        }
     }
 
     [Fact]
@@ -173,6 +197,7 @@ public sealed class PasswordRecoveryWebApplicationFactory : WebApplicationFactor
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=test;Username=test;Password=test");
         builder.UseSetting("Brevo:FrontendBaseUrl", "https://app.example/");
         builder.ConfigureServices(services =>
@@ -189,12 +214,19 @@ public sealed class PasswordRecoveryWebApplicationFactory : WebApplicationFactor
 public sealed class RecordingRecoveryEmailSender : IRecoveryEmailSender
 {
     public List<Uri> Links { get; } = [];
+    public Exception? ExceptionToThrow { get; set; }
 
     public Task SendPasswordResetAsync(string recipientEmail, Uri resetLink, CancellationToken cancellationToken = default)
     {
         Links.Add(resetLink);
-        return Task.CompletedTask;
+        return ExceptionToThrow is null
+            ? Task.CompletedTask
+            : Task.FromException(ExceptionToThrow);
     }
 
-    public void Clear() => Links.Clear();
+    public void Clear()
+    {
+        Links.Clear();
+        ExceptionToThrow = null;
+    }
 }

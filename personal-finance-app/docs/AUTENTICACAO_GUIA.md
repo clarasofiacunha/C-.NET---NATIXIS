@@ -79,22 +79,24 @@ No desenvolvimento, o Vite encaminha `/auth` para a API local. Em produção, o 
 
 O frontend trata os erros da API e mostra mensagens adequadas: credenciais inválidas/conta bloqueada no login, mensagens de validação no registo e aviso quando a sessão termina.
 
-## Recuperação de palavra-passe — serviço Brevo (task 1)
+## Recuperação de palavra-passe
 
 ### Objetivo
 
-O serviço prepara e envia um email transacional pela Brevo. Nesta fase ainda não existe um endpoint a chamá-lo: isso será feito na task seguinte. O serviço recebe o email do destinatário e o link de redefinição já criado, monta o pedido à Brevo e envia-o através de `HttpClient`.
+Uma pessoa introduz o email em `#forgot-password`. A API cria um token de redefinição do ASP.NET Core Identity e envia, através do relay SMTP da Brevo, um link para `#reset-password`. A página lê o `email` e o `token` do fragmento do URL, pede a nova palavra-passe duas vezes e chama `POST /auth/reset-password`.
+
+O token usa o prazo padrão do provider do ASP.NET Core Identity. Também deixa de ser válido depois de usado ou quando a palavra-passe é alterada. Após uma alteração bem-sucedida, o frontend remove o token do URL antes de oferecer o regresso ao login.
 
 ### Ficheiros e responsabilidade
 
 | Ficheiro | Responsabilidade |
 | --- | --- |
 | `Services/IRecoveryEmailSender.cs` | Define o contrato que qualquer serviço de envio de recuperação tem de cumprir. |
-| `Services/BrevoRecoveryEmailSender.cs` | Implementa o contrato usando a API HTTP da Brevo. |
-| `Services/BrevoOptions.cs` | Representa a configuração lida do servidor: chave Brevo, remetente e URL base do frontend. |
+| `Services/BrevoRecoveryEmailSender.cs` | Implementa o contrato usando o relay SMTP da Brevo. |
+| `Services/BrevoOptions.cs` | Representa a configuração lida do servidor: credenciais SMTP, remetente e URL base do frontend. |
 | `Services/RecoveryEmailDeliveryException.cs` | Define um erro controlado de envio, seguro para devolver/tratar sem revelar segredos. |
-| `Program.cs` | Regista as opções e o cliente HTTP no contentor de injeção de dependências. |
-| `PersonalFinance.Tests/BrevoRecoveryEmailSenderTests.cs` | Testa o pedido HTTP sem contactar a Brevo. |
+| `Program.cs` | Regista as opções, a fábrica SMTP e o serviço no contentor de injeção de dependências. |
+| `PersonalFinance.Tests/BrevoRecoveryEmailSenderTests.cs` | Testa o envio SMTP com um cliente falso, sem contactar a Brevo. |
 
 ### Contrato: `IRecoveryEmailSender`
 
@@ -102,11 +104,11 @@ O serviço prepara e envia um email transacional pela Brevo. Nesta fase ainda n�
 Task SendPasswordResetAsync(string recipientEmail, Uri resetLink, CancellationToken cancellationToken = default);
 ```
 
-Uma interface permite que o controlador dependa de uma abstração, e não da Brevo diretamente. Isto torna o código mais fácil de testar: nos testes do endpoint futuro podemos substituir este serviço por uma implementação falsa, sem enviar emails reais.
+Uma interface permite que o controlador dependa de uma abstração, e não da Brevo diretamente. Isto torna o código fácil de testar: os testes substituem o serviço por uma implementação falsa, sem enviar emails reais.
 
 - `recipientEmail`: endereço que recebe a mensagem.
 - `resetLink`: URL já construída pelo fluxo de recuperação. O serviço não cria nem regista o token que possa existir nesse link.
-- `CancellationToken`: permite cancelar o pedido, por exemplo se o cliente HTTP desligar.
+- `CancellationToken`: permite cancelar o pedido se o cliente desligar.
 
 ### Configuração: `BrevoOptions`
 
@@ -114,55 +116,82 @@ Uma interface permite que o controlador dependa de uma abstração, e não da Br
 
 | Propriedade | Finalidade |
 | --- | --- |
-| `ApiKey` | Chave privada enviada apenas no header `api-key` do pedido para a Brevo. |
+| `SmtpHost` | Host SMTP da Brevo, normalmente `smtp-relay.brevo.com`. |
+| `SmtpPort` | Porta SMTP, normalmente `587`. |
+| `SmtpUsername` | Utilizador SMTP da Brevo. |
+| `SmtpPassword` | Chave SMTP privada da Brevo. |
 | `SenderEmail` | Email de remetente, que tem de estar verificado na conta Brevo para envios reais. |
 | `SenderName` | Nome apresentado como remetente; é opcional. |
-| `FrontendBaseUrl` | URL pública do frontend; será usada na task 2 para formar o link de recuperação. |
+| `FrontendBaseUrl` | URL pública do frontend, usada para formar o link de recuperação. |
 
-Em desenvolvimento, os valores podem ser definidos com `dotnet user-secrets`; em produção devem vir de variáveis de ambiente ou de uma secret store. A chave nunca deve estar no frontend, em `appsettings.json` versionado ou nos logs.
+Esta versão usa o relay SMTP da Brevo, não a API HTTP; por isso `Brevo:ApiKey` não é uma configuração usada. Em desenvolvimento, os valores podem ser definidos com `dotnet user-secrets`; em produção devem vir de variáveis de ambiente ou de uma secret store. As credenciais nunca devem estar no frontend, em `appsettings.json` versionado ou nos logs.
 
 ### Registo no `Program.cs`
 
 ```csharp
 builder.Services.Configure<BrevoOptions>(
     builder.Configuration.GetSection(BrevoOptions.SectionName));
-builder.Services.AddHttpClient<IRecoveryEmailSender, BrevoRecoveryEmailSender>(client =>
-{
-    client.BaseAddress = new Uri(BrevoRecoveryEmailSender.ApiBaseAddress);
-});
+builder.Services.AddSingleton<ISmtpEmailClientFactory, SmtpEmailClientFactory>();
+builder.Services.AddScoped<IRecoveryEmailSender, BrevoRecoveryEmailSender>();
 ```
 
-O ASP.NET Core possui um contentor de injeção de dependências. `Configure` associa a secção `Brevo` a `BrevoOptions`. `AddHttpClient` cria e gere o `HttpClient` para `BrevoRecoveryEmailSender`, incluindo a base `https://api.brevo.com/`. Quando uma classe pedir `IRecoveryEmailSender`, recebe automaticamente uma instância de `BrevoRecoveryEmailSender` pronta a usar.
+O ASP.NET Core possui um contentor de injeção de dependências. `Configure` associa a secção `Brevo` a `BrevoOptions`. A fábrica cria o cliente SMTP com TLS; quando uma classe pede `IRecoveryEmailSender`, recebe uma instância de `BrevoRecoveryEmailSender` pronta a usar.
 
-### Envio do pedido HTTP
+### Envio SMTP e ligação segura
 
 O método `SendPasswordResetAsync` executa estes passos:
 
-1. Lê e valida a configuração necessária: chave e email do remetente.
+1. Lê e valida a configuração necessária: host, porta, utilizador, palavra-passe e email do remetente.
 2. Confirma que recebeu destinatário e uma URL absoluta.
-3. Cria o payload JSON esperado pela Brevo: `sender`, `to`, `subject` e `htmlContent`.
-4. Cria um `HttpRequestMessage` `POST` para `v3/smtp/email` e coloca a chave apenas no header `api-key`.
-5. Envia o pedido com `httpClient.SendAsync`.
-6. Se a Brevo responder com código 2xx, termina com sucesso; caso contrário lança `RecoveryEmailDeliveryException`.
+3. Cria a mensagem HTML e codifica o URL para o atributo `href`.
+4. Cria um cliente SMTP com TLS e envia a mensagem.
+5. Se o relay rejeitar a mensagem, devolve `RecoveryEmailDeliveryException`.
 
 O corpo HTML usa `WebUtility.HtmlEncode(resetLink.AbsoluteUri)`. Esta codificação evita que caracteres especiais do URL sejam interpretados como HTML. Por exemplo, `&` fica `&amp;` dentro do atributo `href`, mas o browser reconstrói o link corretamente quando a pessoa clica.
 
 ### Tratamento seguro de erros
 
-Quando a configuração está incompleta ou a Brevo devolve uma resposta de erro, o serviço lança `RecoveryEmailDeliveryException` com uma mensagem genérica. Para falhas de rede, converte `HttpRequestException` no mesmo tipo de erro controlado.
+Quando a configuração está incompleta ou o relay SMTP devolve um erro, o serviço lança `RecoveryEmailDeliveryException` com uma mensagem genérica.
 
-Os logs registam apenas o código de estado HTTP ou que o fornecedor não foi alcançado. Não registam o URL do pedido, corpo JSON, email do destinatário, token de recuperação ou chave da API. Isto é importante porque o token dá acesso à alteração da palavra-passe.
+Os logs não registam o URL do pedido, email do destinatário, token de recuperação, utilizador SMTP ou palavra-passe SMTP. Isto é importante porque o token dá acesso à alteração da palavra-passe.
 
 O cancelamento real de um pedido não é transformado num erro de envio: `OperationCanceledException` é propagada quando o `CancellationToken` foi cancelado.
 
 ### Testes automatizados
 
-Os testes usam `RecordingHandler`, uma implementação falsa de `HttpMessageHandler`. Em vez de a chamada sair para a internet, este handler guarda o pedido que recebeu e devolve uma resposta programada.
+Os testes usam um cliente SMTP e um serviço de email falsos. Em vez de a chamada sair para a internet, guardam a mensagem recebida ou simulam uma falha de entrega.
 
 São cobertos três casos:
 
-1. Resposta `202 Accepted`: confirma método `POST`, URL da Brevo, header `api-key`, remetente, destinatário e conteúdo do email.
-2. Resposta `400 Bad Request`: confirma que é lançado um erro controlado e que a mensagem não inclui o token.
-3. Configuração sem chave/remetente: confirma que o serviço falha de forma controlada antes de enviar um pedido.
+1. Conta inexistente: devolve a mesma mensagem genérica e não envia email.
+2. Token válido: altera a palavra-passe sem criar sessão; token inválido ou reutilizado falha.
+3. Falha SMTP: confirma que o serviço devolve erro controlado e que o endpoint mantém a resposta genérica sem expor o token.
+4. Configuração incompleta: confirma que o serviço falha de forma controlada antes de enviar uma mensagem.
 
 Assim, a equipa consegue testar a integração sem credenciais Brevo e sem enviar mensagens reais.
+
+### Configuração por ambiente
+
+| Configuração ASP.NET Core | Variável de ambiente / segredo | Exemplo |
+| --- | --- | --- |
+| `Brevo:SmtpHost` | `Brevo__SmtpHost` | `smtp-relay.brevo.com` |
+| `Brevo:SmtpPort` | `Brevo__SmtpPort` | `587` |
+| `Brevo:SmtpUsername` | `Brevo__SmtpUsername` | utilizador SMTP da Brevo |
+| `Brevo:SmtpPassword` | `Brevo__SmtpPassword` | chave SMTP da Brevo |
+| `Brevo:SenderEmail` | `Brevo__SenderEmail` | `no-reply@exemplo.pt` |
+| `Brevo:SenderName` | `Brevo__SenderName` | `Personal Finance` |
+| `Brevo:FrontendBaseUrl` | `Brevo__FrontendBaseUrl` | `https://app.exemplo.pt/` |
+
+O endereço em `Brevo:SenderEmail` tem de estar verificado na conta Brevo antes de qualquer envio real. `Brevo:FrontendBaseUrl` deve ser o URL público exato do frontend, com `http` ou `https`; não é derivado do cabeçalho `Host` do pedido.
+
+Para Docker, use os valores do `.env` local a partir de `.env.example`; `docker-compose.yml` mapeia-os para `Brevo__...`. Sem Docker, use Secret Manager no projeto da API, por exemplo:
+
+```powershell
+dotnet user-secrets set "Brevo:SmtpPassword" "<chave-smtp>" --project backend/PersonalFinance.Api
+dotnet user-secrets set "Brevo:SenderEmail" "no-reply@exemplo.pt" --project backend/PersonalFinance.Api
+dotnet user-secrets set "Brevo:FrontendBaseUrl" "http://localhost:5173/" --project backend/PersonalFinance.Api
+```
+
+Em produção, guarde todos os valores num secret store ou nas variáveis do serviço de alojamento, usando a forma `Brevo__...`; restrinja o acesso à identidade da API e rode a palavra-passe SMTP em caso de exposição. Defina o URL HTTPS público do frontend e permita essa origem na política CORS da API.
+
+O envio real permanece pendente até existirem credenciais SMTP e remetente verificado. Quando disponíveis, use uma conta de teste: peça a recuperação, abra o link, redefina a palavra-passe e confirme o login com a nova palavra-passe. Não registe nem partilhe o token do link.
