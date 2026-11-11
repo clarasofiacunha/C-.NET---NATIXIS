@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { apiRequest, authRequest } from '../auth/auth'
+import { apiRequest } from '../../api/client'
+import { authRequest } from '../auth/auth'
 import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
 import MainNavigation from './MainNavigation'
+import '../../styles/dashboard.css'
 
 type Summary = {
   totalBalance: number

@@ -1,0 +1,57 @@
+.accounts-hero { display: flex; align-items: center; justify-content: space-between; min-height: 132px; padding: 24px 26px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #8f55b5, #b27bca); box-shadow: 0 14px 28px rgba(111, 44, 145, .16); }
+.account-notification { position: fixed; z-index: 20; right: 24px; bottom: 24px; max-width: min(360px, calc(100vw - 48px)); margin: 0; padding: 12px 16px; border: 1px solid #e6b8c5; border-radius: 9px; color: #76233d; background: #fff4f6; box-shadow: 0 12px 28px rgba(48, 21, 62, .16); font-size: 12px; }
+.accounts-hero__label, .accounts-hero small { display: block; color: rgba(255,255,255,.78); font-size: 12px; }
+.accounts-hero strong { display: block; margin: 11px 0 6px; font-size: 29px; letter-spacing: -1px; }
+.accounts-hero__mark { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: #f5eafa; font-size: 25px; }
+.section-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 5px; border-radius: 10px; color: #8f55b5; background: #f4eafa; font-size: 11px; vertical-align: 2px; }
+.accounts-list { overflow: hidden; border: 1px solid #e4d8ea; border-radius: 12px; background: #fff; }
+.account-card { display: flex; align-items: center; gap: 12px; min-height: 70px; padding: 12px 16px; border-bottom: 1px solid #f0eaf3; }
+.account-card:last-child { border-bottom: 0; }
+.account-icon { display: grid; flex: 0 0 auto; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: #f4eafa; color: #8f55b5; font-size: 19px; }
+.account-icon--savings { color: #39775b; background: #e8f4ec; }
+.account-icon--cash { color: #ad7a2c; background: #fff4df; }
+.account-card__details { min-width: 0; flex: 1; }
+.account-card__details strong, .account-card__details span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-card__details strong { font-size: 13px; }
+.account-card__details span, .section-caption { margin-top: 4px; color: #8a7a91; font-size: 11px; }
+.account-card__balance { font-size: 13px; white-space: nowrap; }
+.account-card__actions { display: flex; gap: 8px; margin-left: 7px; }
+.account-action { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8f55b5; }
+.account-action:hover { background: #f4eafa; }
+.account-action--delete { color: #a44c67; }
+.account-action--delete:hover { background: #fbecef; }
+.account-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.account-card__actions button:disabled { cursor: wait; opacity: .45; }
+.account-form { margin-bottom: 12px; padding: 17px; border: 1px solid #e4d8ea; border-radius: 12px; background: #fff; }
+.account-form__heading strong, .account-form__heading span { display: block; }
+.account-form__heading strong { font-size: 14px; }
+.account-form__heading span { margin-top: 4px; color: #8a7a91; font-size: 11px; }
+.account-form__fields { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin-top: 15px; }
+.account-form .field { margin-bottom: 0; }
+.account-form select { width: 100%; min-height: 47px; padding: 12px 10px; border: 1px solid #d9cce2; border-radius: 7px; color: #30153e; background: #fff; }
+.account-form__submit { width: auto; margin-top: 13px; padding: 11px 15px; }
+.account-modal { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(48, 21, 62, .32); }
+.account-modal__dialog { width: min(100%, 560px); border: 1px solid #e4d8ea; border-radius: 14px; background: #fff; box-shadow: 0 22px 60px rgba(48, 21, 62, .2); }
+.account-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px 22px 0; }
+.account-modal__header h3 { margin: 0; color: #4a2c54; font-size: 18px; }
+.account-modal__header p { margin: 6px 0 0; color: #8a7a91; font-size: 12px; }
+.account-modal__close { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: #f4eafa; color: #704083; font-size: 21px; line-height: 1; }
+.account-modal__dialog .account-form { margin: 18px 0 0; padding: 0 22px 22px; border: 0; }
+.account-modal__footer { display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid #f0eaf3; }
+.account-modal__cancel, .account-modal__footer .account-form__submit { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; box-sizing: border-box; }
+.account-modal__cancel { padding: 10px 12px; border: 0; background: transparent; color: #8f55b5; font-size: 12px; font-weight: 650; }
+.account-modal__footer .account-form__submit { margin-top: 0; }
+.accounts-history { margin-top: 29px; }
+.section-caption { margin-bottom: 0; }
+.balance-history { overflow: hidden; border: 1px solid #e4d8ea; border-radius: 12px; background: #fff; }
+.balance-history svg { display: block; width: 100%; min-width: 560px; height: auto; padding: 15px 13px 0; }
+.chart-grid-line { stroke: #f0eaf3; stroke-width: 1; }
+.balance-history__area { fill: url(#balance-area); }
+.balance-history__line { fill: none; stroke: #8f55b5; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+.balance-history__label { fill: #8a7a91; font-size: 11px; text-transform: capitalize; }
+.balance-history__y-label { fill: #8a7a91; font-size: 10px; }
+.chart-periods { display: flex; justify-content: center; gap: 4px; padding: 0 20px 16px; }
+.chart-period { min-width: 46px; padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #8a7a91; font-size: 11px; font-weight: 650; }
+.chart-period:hover { color: #704083; background: #f9f3fb; }
+.chart-period--active { border-color: #d7bce3; color: #704083; background: #f4eafa; }
+@media (max-width: 620px) { .account-form__fields { grid-template-columns: 1fr; } .accounts-hero strong { font-size: 25px; } .account-card__actions { flex-direction: column; gap: 3px; } }

@@ -1,6 +1,7 @@
 import type { AuthPageMode } from '../auth/AuthPage'
 import MainNavigation from './MainNavigation'
 import type { User } from '../auth/auth'
+import '../../styles/dashboard.css'
 
 const titles: Record<'accounts' | 'summary' | 'budgets' | 'more', string> = {
   accounts: 'Accounts',
