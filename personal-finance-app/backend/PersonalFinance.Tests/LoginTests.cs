@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -142,6 +143,7 @@ public sealed class LoginWebApplicationFactory : WebApplicationFactory<Program>
             "Host=localhost;Port=5432;Database=login_tests;Username=test;Password=test");
         builder.ConfigureServices(services =>
         {
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
             var descriptor = services.Single(service =>
                 service.ServiceType == typeof(DbContextOptions<AppDbContext>));
             services.Remove(descriptor);
