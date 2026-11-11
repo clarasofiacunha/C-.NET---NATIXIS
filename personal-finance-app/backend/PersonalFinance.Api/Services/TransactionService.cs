@@ -43,7 +43,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         var transaction = new FinanceTransaction
         {
             UserId = userId, AccountId = request.AccountId!.Value, CategoryId = request.CategoryId!.Value,
-            Amount = request.Amount!.Value, Type = request.Type.Value,
+            Amount = request.Amount!.Value, Type = request.Type!.Value,
             Date = request.Date!.Value.UtcDateTime, Description = NormalizeDescription(request.Description)
         };
         db.Transactions.Add(transaction);
@@ -65,7 +65,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         // if (references.Value.CategoryType != request.Type!.Value) return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
 
         transaction.AccountId = request.AccountId!.Value; transaction.CategoryId = request.CategoryId!.Value;
-        transaction.Amount = request.Amount!.Value; transaction.Type = request.Type.Value;
+        transaction.Amount = request.Amount!.Value; transaction.Type = request.Type!.Value;
         transaction.Date = request.Date!.Value.UtcDateTime;
         transaction.Description = NormalizeDescription(request.Description);
         try { await db.SaveChangesAsync(cancellationToken); }

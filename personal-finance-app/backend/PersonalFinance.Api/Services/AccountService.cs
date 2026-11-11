@@ -13,13 +13,13 @@ public sealed class AccountService(AppDbContext db) : IAccountService
             .Where(a => a.UserId == userId)
             .OrderBy(a => a.Name)
             .ThenBy(a => a.Id)
-            .Select(a => new AccountResponseDto(a.Id, a.Name, a.Type, a.InitialBalance, a.CreatedAt))
+            .Select(a => new AccountResponseDto(a.Id, a.Name, a.Type, a.InitialBalance, a.Balance, a.CreatedAt))
             .ToListAsync(cancellationToken);
 
     public Task<AccountResponseDto?> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
         db.Accounts.AsNoTracking()
             .Where(a => a.Id == id && a.UserId == userId)
-            .Select(a => new AccountResponseDto(a.Id, a.Name, a.Type, a.InitialBalance, a.CreatedAt))
+            .Select(a => new AccountResponseDto(a.Id, a.Name, a.Type, a.InitialBalance, a.Balance, a.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<AccountOperationResult> CreateAsync(
