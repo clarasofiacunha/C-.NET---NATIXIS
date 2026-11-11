@@ -12,7 +12,7 @@ public static class DemoSeeder
         var db = services.GetRequiredService<AppDbContext>();
         var users = services.GetRequiredService<UserManager<AppUser>>();
         var rng = new Random(20261020);
-        var faker = new Faker("pt_PT");
+        var faker = new Faker("en_GB");
         var profiles = new (string Name, decimal Salary, bool Variable)[]
         {
             ("Ana Estudante", 650m, false),
@@ -20,17 +20,17 @@ public static class DemoSeeder
             ("Carla Sénior", 2600m, false),
             ("Diogo Freelancer", 1700m, true)
         };
-        var expenseNames = new[] { "Habitação", "Alimentação", "Transportes", "Lazer", "Saúde", "Subscrições", "Outros" };
+        var expenseNames = new[] { "Housing", "Food", "Transport", "Leisure", "Health", "Subscriptions", "Other" };
         var expenseLimits = new[] { 600m, 250m, 80m, 120m, 75m, 40m, 90m };
         var expenseDescriptions = new Dictionary<string, string[]>
         {
-            ["Habitação"] = new[] { "Renda", "Eletricidade", "Água" },
-            ["Alimentação"] = new[] { "Continente", "Pingo Doce", "Mercado local" },
-            ["Transportes"] = new[] { "Andante", "Combustível", "Bilhete de comboio" },
-            ["Lazer"] = new[] { "Cinema", "Restaurante", "Café" },
-            ["Saúde"] = new[] { "Farmácia", "Consulta" },
-            ["Subscrições"] = new[] { "Streaming", "Cloud" },
-            ["Outros"] = new[] { "Compras diversas", "Presente" }
+            ["Housing"] = new[] { "Rent", "Electricity", "Water" },
+            ["Food"] = new[] { "Supermarket", "Local market", "Groceries" },
+            ["Transport"] = new[] { "Public transport", "Fuel", "Train ticket" },
+            ["Leisure"] = new[] { "Cinema", "Restaurant", "Coffee" },
+            ["Health"] = new[] { "Pharmacy", "Medical appointment" },
+            ["Subscriptions"] = new[] { "Streaming", "Cloud storage" },
+            ["Other"] = new[] { "Miscellaneous shopping", "Gift" }
         };
         for (int i = 0; i < profiles.Length; i++)
         {
@@ -43,13 +43,17 @@ public static class DemoSeeder
                 if (!created.Succeeded)
                     throw new InvalidOperationException(string.Join("; ", created.Errors.Select(x => x.Description)));
             }
-            if (await db.Accounts.AnyAsync(a => a.UserId == user.Id)) continue;
+            if (await db.Accounts.AnyAsync(a => a.UserId == user.Id))
+            {
+                await UpdateExistingDemoDataAsync(db, user.Id);
+                continue;
+            }
 
-            var checking = new Account { UserId = user.Id, Name = "Conta à ordem", Type = AccountType.Checking, InitialBalance = 2000m };
-            var savings = new Account { UserId = user.Id, Name = "Poupança", Type = AccountType.Savings, InitialBalance = 1000m };
+            var checking = new Account { UserId = user.Id, Name = "Checking account", Type = AccountType.Checking, InitialBalance = 2000m };
+            var savings = new Account { UserId = user.Id, Name = "Savings", Type = AccountType.Savings, InitialBalance = 1000m };
             var checkingBalance = checking.InitialBalance;
             var categories = expenseNames.Select(n => new Category { UserId = user.Id, Name = n, Type = TransactionType.Expense }).ToList();
-            var income = new Category { UserId = user.Id, Name = profiles[i].Variable ? "Trabalho independente" : "Salário", Type = TransactionType.Income };
+            var income = new Category { UserId = user.Id, Name = profiles[i].Variable ? "Freelance work" : "Salary", Type = TransactionType.Income };
             db.Accounts.AddRange(checking, savings);
             db.Categories.AddRange(categories);
             db.Categories.Add(income);
@@ -59,7 +63,7 @@ public static class DemoSeeder
                 var date = start.AddMonths(month);
                 var salary = profiles[i].Variable ? rng.Next(900, 3201) : profiles[i].Salary;
                 checkingBalance += salary;
-                db.Transactions.Add(new FinanceTransaction { UserId = user.Id, Account = checking, Category = income, Type = TransactionType.Income, Amount = salary, Date = date, Description = profiles[i].Variable ? "Prestação de serviços" : "Salário / rendimento" });
+                db.Transactions.Add(new FinanceTransaction { UserId = user.Id, Account = checking, Category = income, Type = TransactionType.Income, Amount = salary, Date = date, Description = profiles[i].Variable ? "Freelance service" : "Salary / income" });
                 for (int c = 0; c < categories.Count; c++)
                 {
                     var category = categories[c];
@@ -77,6 +81,7 @@ public static class DemoSeeder
                         db.Transactions.Add(new FinanceTransaction { UserId = user.Id, Account = checking, Category = category, Type = TransactionType.Expense, Amount = amount, Date = new DateTime(date.Year, date.Month, day, 12, 0, 0, DateTimeKind.Utc), Description = descriptions[rng.Next(descriptions.Length)] });
                     }
                 }
+
             }
             checking.Balance = checkingBalance;
             db.Goals.AddRange(
@@ -85,5 +90,73 @@ public static class DemoSeeder
             );
             await db.SaveChangesAsync();
         }
+    }
+
+    private static async Task UpdateExistingDemoDataAsync(AppDbContext db, Guid userId)
+    {
+        var accountNames = new Dictionary<string, string>
+        {
+            ["Conta à ordem"] = "Checking account",
+            ["Poupança"] = "Savings",
+        };
+        var categoryNames = new Dictionary<string, string>
+        {
+            ["Habitação"] = "Housing",
+            ["Alimentação"] = "Food",
+            ["Transportes"] = "Transport",
+            ["Lazer"] = "Leisure",
+            ["Saúde"] = "Health",
+            ["Subscrições"] = "Subscriptions",
+            ["Outros"] = "Other",
+            ["Trabalho independente"] = "Freelance work",
+            ["Salário"] = "Salary",
+        };
+        var descriptions = new Dictionary<string, string>
+        {
+            ["Renda"] = "Rent",
+            ["Eletricidade"] = "Electricity",
+            ["Água"] = "Water",
+            ["Continente"] = "Supermarket",
+            ["Pingo Doce"] = "Supermarket",
+            ["Mercado local"] = "Local market",
+            ["Andante"] = "Public transport",
+            ["Combustível"] = "Fuel",
+            ["Bilhete de comboio"] = "Train ticket",
+            ["Restaurante"] = "Restaurant",
+            ["Café"] = "Coffee",
+            ["Farmácia"] = "Pharmacy",
+            ["Consulta"] = "Medical appointment",
+            ["Cloud"] = "Cloud storage",
+            ["Compras diversas"] = "Miscellaneous shopping",
+            ["Presente"] = "Gift",
+            ["Prestação de serviços"] = "Freelance service",
+            ["Salário / rendimento"] = "Salary / income",
+        };
+
+        var accounts = await db.Accounts.Where(account => account.UserId == userId).ToListAsync();
+        foreach (var account in accounts)
+        {
+            if (accountNames.TryGetValue(account.Name, out var name))
+                account.Name = name;
+        }
+
+        var categories = await db.Categories.Where(category => category.UserId == userId).ToListAsync();
+        foreach (var category in categories)
+        {
+            if (categoryNames.TryGetValue(category.Name, out var name))
+                category.Name = name;
+        }
+
+        var transactions = await db.Transactions
+            .Where(transaction => transaction.UserId == userId)
+            .ToListAsync();
+        foreach (var transaction in transactions)
+        {
+            if (transaction.Description is not null
+                && descriptions.TryGetValue(transaction.Description, out var description))
+                transaction.Description = description;
+        }
+
+        await db.SaveChangesAsync();
     }
 }

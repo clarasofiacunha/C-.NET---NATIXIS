@@ -95,6 +95,27 @@ h2 { font-size: 30px; font-weight: 600; letter-spacing: -1px; margin: 0 0 12px; 
 .transaction-row div strong, .transaction-row div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .transaction-row small { margin-top: 3px; color: #8a7a91; font-size: 11px; }
 .transaction-row > strong { font-size: 12px; white-space: nowrap; }
+.transaction-row { cursor: pointer; }
+.transaction-row:hover, .transaction-row:focus-visible { background: #fcf9fd; outline: none; }
+.account-modal { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(48, 21, 62, .32); }
+.account-modal__dialog { width: min(100%, 620px); border: 1px solid #e4d8ea; border-radius: 14px; background: #fff; box-shadow: 0 22px 60px rgba(48, 21, 62, .2); }
+.account-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px 22px 0; }
+.account-modal__header h3 { margin: 0; color: #4a2c54; font-size: 18px; }
+.account-modal__header p { margin: 6px 0 0; color: #8a7a91; font-size: 12px; }
+.account-modal__close { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: #f4eafa; color: #704083; font-size: 21px; line-height: 1; }
+.account-form { margin: 18px 0 0; padding: 0 22px 22px; }
+.account-form__fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+.account-form .field { margin-bottom: 0; }
+.account-form select, .account-form input { width: 100%; min-height: 43px; box-sizing: border-box; padding: 10px; border: 1px solid #d9cce2; border-radius: 7px; color: #30153e; background: #fff; }
+.account-form label { display: block; margin-bottom: 6px; color: #6d5b73; font-size: 11px; font-weight: 650; }
+.account-modal__footer { display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid #f0eaf3; }
+.account-modal__cancel, .account-modal__footer .account-form__submit { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; box-sizing: border-box; }
+.account-modal__cancel { padding: 10px 12px; border: 0; background: transparent; color: #8f55b5; font-size: 12px; font-weight: 650; }
+.account-modal__footer .account-form__submit { width: auto; margin: 0; padding: 11px 15px; }
+.transaction-delete-button { display: inline-flex; align-items: center; gap: 7px; margin-right: auto; padding: 10px 12px; border: 0; border-radius: 7px; color: #a44c67; background: transparent; font-size: 12px; font-weight: 650; }
+.transaction-delete-button:hover { background: #fbecef; }
+.transaction-delete-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+@media (max-width: 620px) { .account-form__fields { grid-template-columns: 1fr; } }
 .income { color: #387c5b; }.expense { color: #a44c67; }
 .dashboard-empty { margin: 0; padding: 16px; color: #8a7a91; font-size: 12px; }
 .dashboard-chart-section { margin-top: 8px; }

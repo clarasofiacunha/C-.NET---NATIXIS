@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { apiRequest, authRequest } from '../auth/auth'
+import type { FormEvent } from 'react'
+import { authRequest, apiMutation, apiRequest } from '../auth/auth'
 import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
 import MainNavigation from './MainNavigation'
@@ -14,13 +15,18 @@ type Summary = {
 
 type Transaction = {
   id: string
+  accountId: string
   accountName: string
+  categoryId: string
   categoryName: string
   amount: number
   type: 'Income' | 'Expense'
   date: string
   description?: string
 }
+
+type Account = { id: string; name: string }
+type Category = { id: string; name: string; type: 'Income' | 'Expense' }
 
 const money = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' })
 const date = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' })
@@ -39,6 +45,19 @@ export default function DashboardPage({
   const [summary, setSummary] = useState<Summary | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [chartTransactions, setChartTransactions] = useState<Transaction[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [transactionForm, setTransactionForm] = useState({
+    accountId: '',
+    categoryId: '',
+    amount: '',
+    type: 'Expense' as Transaction['type'],
+    date: '',
+    description: '',
+  })
+  const [transactionSaving, setTransactionSaving] = useState(false)
+  const [transactionError, setTransactionError] = useState('')
   const currentDate = new Date()
   const [period, setPeriod] = useState({
     year: currentDate.getFullYear(),
@@ -60,8 +79,10 @@ export default function DashboardPage({
         to: periodEnd,
       }),
       apiRequest<Transaction[]>('transactions', { from: chartStart, to: periodEnd }),
+      apiRequest<Account[]>('accounts'),
+      apiRequest<Category[]>('categories'),
     ])
-      .then(([monthlySummary, userTransactions, historyTransactions]) => {
+      .then(([monthlySummary, userTransactions, historyTransactions, loadedAccounts, loadedCategories]) => {
         if (userTransactions.length === 0 && historyTransactions.length > 0) {
           const latestTransaction = historyTransactions.reduce((latest, transaction) =>
             new Date(transaction.date) > new Date(latest.date) ? transaction : latest)
@@ -78,6 +99,8 @@ export default function DashboardPage({
         setSummary(monthlySummary)
         setTransactions(userTransactions)
         setChartTransactions(historyTransactions)
+        setAccounts(loadedAccounts)
+        setCategories(loadedCategories)
       })
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar o dashboard.')
@@ -128,6 +151,65 @@ export default function DashboardPage({
         ? { year: current.year + 1, month: 1 }
         : { year: current.year, month: current.month + 1 })
   }
+
+  function openEditTransaction(transaction: Transaction) {
+      setTransactionError('')
+      setEditingTransaction(transaction)
+      setTransactionForm({
+        accountId: transaction.accountId,
+        categoryId: transaction.categoryId,
+        amount: transaction.amount.toFixed(2).replace('.', ','),
+        type: transaction.type,
+        date: transaction.date.slice(0, 10),
+        description: transaction.description ?? '',
+      })
+  }
+
+  async function saveTransaction(event: FormEvent<HTMLFormElement>) {
+      event.preventDefault()
+      const amount = Number(transactionForm.amount.replace(',', '.'))
+      if (!transactionForm.accountId || !transactionForm.categoryId || !transactionForm.date
+        || !Number.isFinite(amount) || amount <= 0) {
+        setTransactionError('Enter valid transaction details.')
+        return
+      }
+      setTransactionSaving(true)
+      setTransactionError('')
+      try {
+        await apiMutation<Transaction>(`transactions/${editingTransaction?.id}`, 'PUT', {
+          accountId: transactionForm.accountId,
+          categoryId: transactionForm.categoryId,
+          amount,
+          type: transactionForm.type,
+          date: `${transactionForm.date}T12:00:00Z`,
+          description: transactionForm.description,
+        })
+        setEditingTransaction(null)
+        setBusy(true)
+        window.location.hash = 'dashboard'
+        setPeriod(current => ({ ...current }))
+      } catch (requestError) {
+        setTransactionError(requestError instanceof Error ? requestError.message : 'Unable to update the transaction.')
+      } finally {
+        setTransactionSaving(false)
+      }
+  }
+
+  async function deleteTransaction(transaction: Transaction) {
+      if (!window.confirm('Delete this transaction? This action cannot be undone.')) return
+      setTransactionSaving(true)
+      setError('')
+      try {
+        await apiMutation<void>(`transactions/${transaction.id}`, 'DELETE')
+        setEditingTransaction(null)
+        setBusy(true)
+        setPeriod(current => ({ ...current }))
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'Unable to delete the transaction.')
+      } finally {
+        setTransactionSaving(false)
+      }
+    }
 
   async function logout() {
     try {
@@ -219,7 +301,19 @@ export default function DashboardPage({
                     </div>
                     <div className="transaction-day-card">
                       {dayTransactions.map(transaction => (
-                        <div className="transaction-row" key={transaction.id}>
+                        <div
+                          className="transaction-row"
+                          key={transaction.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEditTransaction(transaction)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              openEditTransaction(transaction)
+                            }
+                          }}
+                        >
                           <span className="transaction-icon">{transaction.type === 'Income' ? '↗' : '↘'}</span>
                           <div>
                             <strong>{transaction.categoryName}</strong>
@@ -236,6 +330,78 @@ export default function DashboardPage({
           </section>
         </>
       )}
+      {editingTransaction && (
+        <div className="account-modal" role="presentation">
+          <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="transaction-form-title">
+            <div className="account-modal__header">
+              <div>
+                <h3 id="transaction-form-title">Edit transaction</h3>
+                <p>Update the details of this transaction.</p>
+              </div>
+              <button type="button" className="account-modal__close" aria-label="Close form" onClick={() => setEditingTransaction(null)} disabled={transactionSaving}>×</button>
+            </div>
+            <form className="account-form transaction-form" onSubmit={saveTransaction}>
+              <div className="account-form__fields">
+                <div className="field">
+                  <label htmlFor="transaction-type">Type</label>
+                  <select id="transaction-type" value={transactionForm.type} onChange={event => setTransactionForm(form => ({ ...form, type: event.target.value as Transaction['type'] }))}>
+                    <option value="Expense">Expense</option>
+                    <option value="Income">Income</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="transaction-amount">Amount</label>
+                  <input id="transaction-amount" inputMode="decimal" value={transactionForm.amount} onChange={event => setTransactionForm(form => ({ ...form, amount: event.target.value }))} required />
+                </div>
+                <div className="field">
+                  <label htmlFor="transaction-date">Date</label>
+                  <input id="transaction-date" type="date" value={transactionForm.date} onChange={event => setTransactionForm(form => ({ ...form, date: event.target.value }))} required />
+                </div>
+                <div className="field">
+                  <label htmlFor="transaction-account">Account</label>
+                  <select id="transaction-account" value={transactionForm.accountId} onChange={event => setTransactionForm(form => ({ ...form, accountId: event.target.value }))}>
+                    {accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="transaction-category">Category</label>
+                  <select id="transaction-category" value={transactionForm.categoryId} onChange={event => setTransactionForm(form => ({ ...form, categoryId: event.target.value }))}>
+                    {categories.filter(category => category.type === transactionForm.type).map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="transaction-description">Description</label>
+                  <input id="transaction-description" value={transactionForm.description} onChange={event => setTransactionForm(form => ({ ...form, description: event.target.value }))} />
+                </div>
+              </div>
+              {transactionError && <p className="error" role="alert">{transactionError}</p>}
+              <div className="account-modal__footer">
+                <button
+                  type="button"
+                  className="transaction-delete-button"
+                  onClick={() => void deleteTransaction(editingTransaction)}
+                  disabled={transactionSaving}
+                  aria-label="Delete transaction"
+                  title="Delete transaction"
+                >
+                  <ActionIcon />
+                  <span>Delete transaction</span>
+                </button>
+                <button type="button" className="account-modal__cancel" onClick={() => setEditingTransaction(null)} disabled={transactionSaving}>Cancel</button>
+                <button className="submit account-form__submit" type="submit" disabled={transactionSaving}>{transactionSaving ? 'Saving...' : 'Save transaction'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+function ActionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 7h14M10 4h4l1 3H9l1-3ZM8 10v7m4-7v7m4-7v7M6 7l1 13h10l1-13" />
+    </svg>
   )
 }
