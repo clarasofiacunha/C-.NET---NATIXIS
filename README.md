@@ -411,7 +411,7 @@ personal-finance-app/
 ├── frontend/
 │   ├── src/                              # App.tsx, estilos e assets iniciais
 │   ├── package.json
-│   └── vite.config.ts                    # Configuração Vite (sem proxy /api)
+│   └── vite.config.ts                    # Configuração Vite e proxy /auth
 ├── scripts/
 │   ├── test-accounts.ps1
 │   └── test-transactions.ps1
@@ -446,7 +446,7 @@ personal-finance-app/
 - Para valores financeiros utiliza-se `decimal` em C#.
 - Nunca guardar passwords, cookies de sessão, connection strings ou `.env` no repositório.
 - O frontend atual é apenas um ponto de partida; **não apresenta ainda uma interface funcional para estes CRUDs**.
-- O `vite.config.ts` atual **não configura um proxy `/api`**. Ao adicionar chamadas HTTP no React, configurar o URL da API e enviar os cookies (`credentials: 'include'`), respeitando as origens CORS previstas.
+- O `vite.config.ts` encaminha `/auth` para `http://localhost:5185` por padrão. Para usar a API do Docker Compose, define `$env:VITE_API_PROXY_TARGET = 'http://localhost:8080'` antes de iniciar o frontend. As chamadas devem enviar os cookies (`credentials: 'include'`), respeitando as origens CORS previstas.
 
 ### Ficheiros da raiz
 
