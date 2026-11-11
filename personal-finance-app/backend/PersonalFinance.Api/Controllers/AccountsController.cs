@@ -121,7 +121,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
             t => t.UserId == userId && t.AccountId == id, cancellationToken))
         {
             return Conflict(new { error =
-                "Nao e possivel eliminar uma conta com transacoes associadas." });
+                "Cannot delete an account with associated transactions." });
         }
 
         db.Accounts.Remove(account);
@@ -139,7 +139,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
         {
             // Protege tambem contra uma transacao criada entre a verificacao e o DELETE.
             return Conflict(new { error =
-                "Nao e possivel eliminar uma conta com transacoes associadas." });
+                "Cannot delete an account with associated transactions." });
         }
 
         return NoContent();
@@ -155,7 +155,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
 
         if (request.Type is null || !Enum.IsDefined(request.Type.Value))
         {
-            error = "O tipo deve ser Checking, Savings ou Cash.";
+            error = "O tipo de conta selecionado nao e valido.";
             return false;
         }
 
