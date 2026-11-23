@@ -129,7 +129,9 @@ locais previstas no projeto.
 }
 ```
 
-Tipos suportados: `Checking` (à ordem), `Savings` (poupança), `Cash` (numerário).
+Tipos suportados: `Checking` (à ordem), `Savings` (poupança), `Cash` (numerário),
+`CreditCard` (cartão de crédito), `Investment` (investimento), `Loan` (empréstimo)
+e `Other` (outro).
 `name` é obrigatório, após remover espaços exteriores, até 120 caracteres.
 `initialBalance` é obrigatório, decimal com até 2 casas decimais, e pode ser
 negativo (por exemplo, conta com descoberto).

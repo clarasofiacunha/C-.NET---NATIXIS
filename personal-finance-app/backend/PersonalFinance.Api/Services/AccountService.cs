@@ -100,7 +100,7 @@ public sealed class AccountService(AppDbContext db) : IAccountService
         }
         if (request.Type is null || !Enum.IsDefined(request.Type.Value))
         {
-            error = "O tipo deve ser Checking, Savings ou Cash.";
+            error = "O tipo de conta selecionado nao e valido.";
             return false;
         }
         if (request.InitialBalance is null ||

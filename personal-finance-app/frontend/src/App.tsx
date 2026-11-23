@@ -7,6 +7,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import EmptyPage from "./pages/dashboard/EmptyPage";
+import AccountsPage from "./pages/dashboard/AccountsPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
 
@@ -76,7 +77,17 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "accounts" || route === "summary" || route === "budgets" || route === "more" ? (
+          ) : route === "accounts" ? (
+            <AccountsPage
+              user={user}
+              onNavigate={navigate}
+              onLogout={() => {
+                setUser(null);
+                navigate("login");
+                setLoginNotice({ email: "", message: "Signed out successfully." });
+              }}
+            />
+          ) : route === "summary" || route === "budgets" || route === "more" ? (
             <EmptyPage
               page={route}
               user={user}

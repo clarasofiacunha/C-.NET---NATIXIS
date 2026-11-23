@@ -4,5 +4,9 @@ public enum AccountType
 {
     Checking,
     Savings,
-    Cash
+    Cash,
+    CreditCard,
+    Investment,
+    Loan,
+    Other
 }
