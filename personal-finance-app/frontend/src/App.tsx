@@ -5,7 +5,9 @@ import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
-import SessionPage from "./pages/auth/SessionPage";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import EmptyPage from "./pages/dashboard/EmptyPage";
+import AccountsPage from "./pages/dashboard/AccountsPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
 
@@ -17,6 +19,9 @@ function getRoute(): AuthPageMode {
     return "register";
   if (window.location.hash === "#forgot-password") return "forgot-password";
   if (window.location.hash.startsWith("#reset-password")) return "reset-password";
+  if (window.location.hash === "#dashboard") return "dashboard";
+  if (["#accounts", "#summary", "#budgets", "#more"].includes(window.location.hash))
+    return window.location.hash.slice(1) as AuthPageMode;
   return "login";
 }
 
@@ -61,14 +66,40 @@ export default function App() {
           Checking your session...
         </p>
       ) : user ? (
-        <SessionPage
-          user={user}
-          onLogout={() => {
-            setUser(null);
-            navigate("login");
-            setLoginNotice({ email: "", message: "Signed out successfully." });
-          }}
-        />
+        <>
+          {route === "dashboard" ? (
+            <DashboardPage
+              user={user}
+              onNavigate={navigate}
+              onLogout={() => {
+                setUser(null);
+                navigate("login");
+                setLoginNotice({ email: "", message: "Signed out successfully." });
+              }}
+            />
+          ) : route === "accounts" ? (
+            <AccountsPage
+              user={user}
+              onNavigate={navigate}
+              onLogout={() => {
+                setUser(null);
+                navigate("login");
+                setLoginNotice({ email: "", message: "Signed out successfully." });
+              }}
+            />
+          ) : route === "summary" || route === "budgets" || route === "more" ? (
+            <EmptyPage
+              page={route}
+              user={user}
+              onNavigate={navigate}
+              onLogout={() => {
+                setUser(null);
+                navigate("login");
+                setLoginNotice({ email: "", message: "Signed out successfully." });
+              }}
+            />
+          ) : null}
+        </>
       ) : route === "register" ? (
         <RegisterPage
           onNavigate={navigate}
@@ -87,7 +118,10 @@ export default function App() {
       ) : (
         <LoginPage
           onNavigate={navigate}
-          onLogin={setUser}
+          onLogin={(currentUser) => {
+            setUser(currentUser);
+            navigate("dashboard");
+          }}
           email={loginNotice.email}
           message={loginNotice.message}
         />

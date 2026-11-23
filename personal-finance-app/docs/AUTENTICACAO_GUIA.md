@@ -75,7 +75,7 @@ O cookie de autenticação chama-se `pf.auth`, é `HttpOnly` (não pode ser lido
 
 O ficheiro `frontend/src/pages/auth/auth.ts` contém `authRequest`, a função usada pelas páginas de autenticação. Esta função usa `fetch`, envia JSON para `POST`, aplica um limite de 15 segundos e define `credentials: 'include'`. Esta última opção é essencial: permite que o browser envie e aceite o cookie de sessão.
 
-No desenvolvimento, o Vite encaminha `/auth` para a API local. Em produção, o frontend e a API devem estar no mesmo site através de reverse proxy ou ser configurados com `VITE_API_URL` e CORS. Como o cookie é `SameSite=Lax`, frontend e API precisam de estar no mesmo site para o fluxo funcionar corretamente. Produção deve usar HTTPS.
+No desenvolvimento, o Vite encaminha `/auth` para a API local em `http://localhost:5185`, que é a porta do perfil `http` do .NET. Se a API estiver a correr pelo Docker Compose, inicia o frontend com `$env:VITE_API_PROXY_TARGET = 'http://localhost:8080'` antes de `npm run web:dev`. Em produção, o frontend e a API devem estar no mesmo site através de reverse proxy ou ser configurados com `VITE_API_URL` e CORS. Como o cookie é `SameSite=Lax`, frontend e API precisam de estar no mesmo site para o fluxo funcionar corretamente. Produção deve usar HTTPS.
 
 O frontend trata os erros da API e mostra mensagens adequadas: credenciais inválidas/conta bloqueada no login, mensagens de validação no registo e aviso quando a sessão termina.
 
