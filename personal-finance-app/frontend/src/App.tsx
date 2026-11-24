@@ -11,6 +11,8 @@ import AccountsPage from "./pages/dashboard/AccountsPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
 
+const APP_ROUTES: AuthPageMode[] = ["dashboard", "accounts", "summary", "budgets", "more"];
+
 function getRoute(): AuthPageMode {
   if (
     window.location.hash === "#register" ||
@@ -54,20 +56,30 @@ export default function App() {
       active = false;
     };
   }, []);
+  // Com sessao ativa, as paginas de autenticacao (ex.: abrir a app sem "#")
+  // mostram o dashboard; sem sessao, as paginas da app mostram o login.
+  const isAppRoute = APP_ROUTES.includes(route);
+  const page: AuthPageMode = checking
+    ? route
+    : user && !isAppRoute
+      ? "dashboard"
+      : !user && isAppRoute
+        ? "login"
+        : route;
   function navigate(next: AuthPageMode) {
     window.history.pushState(null, "", "#" + next);
     setRoute(next);
     setLoginNotice({ email: "", message: "" });
   }
   return (
-    <AuthPage page={route} onNavigate={navigate}>
+    <AuthPage page={page} onNavigate={navigate}>
       {checking ? (
         <p id="form-title" role="status">
           Checking your session...
         </p>
       ) : user ? (
         <>
-          {route === "dashboard" ? (
+          {page === "dashboard" ? (
             <DashboardPage
               user={user}
               onNavigate={navigate}
@@ -77,7 +89,7 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "accounts" ? (
+          ) : page === "accounts" ? (
             <AccountsPage
               user={user}
               onNavigate={navigate}
@@ -87,9 +99,9 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "summary" || route === "budgets" || route === "more" ? (
+          ) : page === "summary" || page === "budgets" || page === "more" ? (
             <EmptyPage
-              page={route}
+              page={page}
               user={user}
               onNavigate={navigate}
               onLogout={() => {
@@ -100,7 +112,7 @@ export default function App() {
             />
           ) : null}
         </>
-      ) : route === "register" ? (
+      ) : page === "register" ? (
         <RegisterPage
           onNavigate={navigate}
           onRegistered={(email) => {
@@ -111,9 +123,9 @@ export default function App() {
             });
           }}
         />
-      ) : route === "forgot-password" ? (
+      ) : page === "forgot-password" ? (
         <ForgotPasswordPage onNavigate={navigate} />
-      ) : route === "reset-password" ? (
+      ) : page === "reset-password" ? (
         <ResetPasswordPage onNavigate={navigate} />
       ) : (
         <LoginPage
