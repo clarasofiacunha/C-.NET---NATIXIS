@@ -95,6 +95,7 @@ export default function SummaryPage({
 
   const periodDate = new Date(period.year, period.month - 1, 1)
   const isCurrentMonth = period.year === today.getFullYear() && period.month === today.getMonth() + 1
+  const topCategory = categories[0]
   const segments = useMemo(() => {
     return categories.reduce<{ offset: number; items: Array<CategoryExpense & { offset: number }> }>(
       (state, category) => ({
@@ -142,9 +143,13 @@ export default function SummaryPage({
       {!busy && !error && (
         <>
           <section className="summary-total" aria-label="Total monthly expenses">
-            <span>Total expenses</span>
-            <strong>{money.format(totalExpenses)}</strong>
-            <small>{categories.length === 1 ? '1 category with expenses' : `${categories.length} categories with expenses`}</small>
+            <span className="summary-total__icon" aria-hidden="true">€</span>
+            <div>
+              <span>Total expenses</span>
+              <strong>{money.format(totalExpenses)}</strong>
+              <small>{categories.length === 1 ? '1 category with expenses' : `${categories.length} categories with expenses`}</small>
+            </div>
+            {topCategory && <p><b>Highest spend</b> {topCategory.name} · {money.format(topCategory.amount)}</p>}
           </section>
 
           <section className="summary-breakdown" aria-labelledby="category-expenses-title">
@@ -178,7 +183,7 @@ export default function SummaryPage({
                   {categories.map(category => (
                     <li key={category.name}>
                       <i style={{ backgroundColor: category.color }} aria-hidden="true" />
-                      <span>{category.name}</span>
+                      <span className="category-list__name">{category.name}</span>
                       <strong>{category.percentage.toFixed(1)}%</strong>
                       <small>{money.format(category.amount)}</small>
                     </li>
