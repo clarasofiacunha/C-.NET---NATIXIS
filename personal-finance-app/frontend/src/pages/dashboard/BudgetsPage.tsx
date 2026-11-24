@@ -29,8 +29,21 @@ type Transaction = {
   amount: number
 }
 
-const money = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' })
-const monthName = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' })
+const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' })
+const monthName = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' })
+const apiErrorTranslations: Record<string, string> = {
+  'A sessão terminou. Entra novamente.': 'Your session has expired. Please sign in again.',
+  'Não foi possível contactar o servidor. Tenta novamente.': 'Unable to reach the server. Please try again.',
+  'Não foi possível concluir o pedido. Tenta novamente.': 'Unable to complete the request. Please try again.',
+  'Já existe um orçamento para esta categoria neste mês.': 'A budget already exists for this category this month.',
+  'Categoria de despesa não encontrada.': 'Expense category not found.',
+  'Orçamento ou categoria de despesa não encontrada.': 'Budget or expense category not found.',
+}
+
+function getBudgetErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback
+  return apiErrorTranslations[error.message] ?? error.message
+}
 
 export default function BudgetsPage({
   user,
@@ -84,7 +97,7 @@ export default function BudgetsPage({
       })
       .catch(requestError => {
         if (active) {
-          setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar os orçamentos.')
+          setError(getBudgetErrorMessage(requestError, 'Unable to load budgets.'))
         }
       })
       .finally(() => {
@@ -115,7 +128,7 @@ export default function BudgetsPage({
     const budget = budgetByCategory.get(category.id) ?? null
     setFormCategory(category)
     setEditingBudget(budget)
-    setFormAmount(budget ? String(budget.limitAmount).replace('.', ',') : '')
+    setFormAmount(budget ? budget.limitAmount.toFixed(2) : '')
     setFormError('')
   }
 
@@ -125,7 +138,7 @@ export default function BudgetsPage({
 
     const normalizedAmount = formAmount.trim().replace(',', '.')
     if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedAmount) || Number(normalizedAmount) <= 0) {
-      setFormError('Introduz um valor positivo com, no máximo, duas casas decimais.')
+      setFormError('Enter a positive amount with no more than two decimal places.')
       return
     }
 
@@ -149,7 +162,7 @@ export default function BudgetsPage({
       setError('')
       setReloadVersion(version => version + 1)
     } catch (requestError) {
-      setFormError(requestError instanceof Error ? requestError.message : 'Não foi possível guardar o orçamento.')
+      setFormError(getBudgetErrorMessage(requestError, 'Unable to save the budget.'))
     } finally {
       setSaving(false)
     }
@@ -168,41 +181,41 @@ export default function BudgetsPage({
       <header className="dashboard-header">
         <div>
           <span className="eyebrow">PERSONAL FINANCE</span>
-          <h2 id="form-title">Orçamentos, {user.name}.</h2>
-          <p className="subtitle">Acompanha as tuas despesas face aos limites mensais.</p>
+          <h2 id="form-title">Budgets, {user.name}.</h2>
+          <p className="subtitle">Track your spending against monthly limits.</p>
         </div>
         <button className="dashboard-logout" onClick={logout}>Sign out</button>
       </header>
       <MainNavigation page="budgets" onNavigate={onNavigate} />
 
-      <div className="budget-month-picker" aria-label="Navegação entre meses">
-        <button type="button" aria-label="Mês anterior" onClick={() => changeMonth(-1)}>‹</button>
+      <div className="budget-month-picker" aria-label="Month navigation">
+        <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)}>‹</button>
         <h3>{monthName.format(periodDate)}</h3>
-        <button type="button" aria-label="Mês seguinte" onClick={() => changeMonth(1)}>›</button>
+        <button type="button" aria-label="Next month" onClick={() => changeMonth(1)}>›</button>
       </div>
 
-      {busy && <p role="status">A carregar os orçamentos...</p>}
+      {busy && <p role="status">Loading budgets...</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {!busy && !error && (
         <>
-          <section className="budget-summary" aria-label="Resumo dos orçamentos">
+          <section className="budget-summary" aria-label="Budget summary">
             <article>
-              <span>Total orçamentado</span>
+              <span>Total budget</span>
               <strong>{money.format(totalBudget)}</strong>
             </article>
             <article>
-              <span>Gasto nas categorias orçamentadas</span>
+              <span>Spent in budgeted categories</span>
               <strong>{money.format(spentWithinBudgets)}</strong>
             </article>
             <article>
-              <span>Disponível</span>
+              <span>Available</span>
               <strong>{money.format(totalBudget - spentWithinBudgets)}</strong>
             </article>
           </section>
 
           <section className="dashboard-section">
             <div className="dashboard-section-title">
-              <h3>Categorias de despesa <span className="section-count">{categories.length}</span></h3>
+              <h3>Expense categories <span className="section-count">{categories.length}</span></h3>
             </div>
             {categories.length > 0 ? (
               <div className="budget-list">
@@ -216,7 +229,7 @@ export default function BudgetsPage({
                       <div className="budget-row__header">
                         <h4>{category.name}</h4>
                         <button type="button" onClick={() => openBudgetForm(category)}>
-                          {budget ? 'Editar orçamento' : 'Definir orçamento'}
+                          {budget ? 'Edit budget' : 'Set budget'}
                         </button>
                       </div>
                       {budget ? (
@@ -224,7 +237,7 @@ export default function BudgetsPage({
                           <div
                             className={`budget-progress budget-progress--${status}`}
                             role="progressbar"
-                            aria-label={`Orçamento de ${category.name}`}
+                            aria-label={`${category.name} budget`}
                             aria-valuemin={0}
                             aria-valuemax={100}
                             aria-valuenow={Math.min(percentage, 100)}
@@ -236,17 +249,17 @@ export default function BudgetsPage({
                             <span>{money.format(spent)} de {money.format(budget.limitAmount)}</span>
                             <span className={`budget-row__status budget-row__status--${status}`}>
                               {status === 'exceeded'
-                                ? 'Orçamento ultrapassado'
+                                ? 'Budget exceeded'
                                 : status === 'near'
-                                  ? 'A aproximar-se do limite'
-                                  : 'Dentro do limite'}
+                                  ? 'Approaching limit'
+                                  : 'Within limit'}
                               {' · '}{Math.round(percentage)}%
                             </span>
                           </div>
                         </>
                       ) : (
                         <p className="budget-row__no-budget">
-                          {money.format(spent)} gastos · Sem orçamento definido
+                          {money.format(spent)} spent · No budget set
                         </p>
                       )}
                     </article>
@@ -254,7 +267,7 @@ export default function BudgetsPage({
                 })}
               </div>
             ) : (
-              <p className="dashboard-empty">Ainda não existem categorias de despesa.</p>
+              <p className="dashboard-empty">No expense categories yet.</p>
             )}
           </section>
         </>
@@ -274,13 +287,13 @@ export default function BudgetsPage({
           <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="budget-form-title">
             <div className="account-modal__header">
               <div>
-                <h3 id="budget-form-title">{editingBudget ? 'Editar orçamento' : 'Definir orçamento'}</h3>
+                <h3 id="budget-form-title">{editingBudget ? 'Edit budget' : 'Set budget'}</h3>
                 <p>{formCategory.name} · {monthName.format(periodDate)}</p>
               </div>
               <button
                 type="button"
                 className="account-modal__close"
-                aria-label="Fechar formulário"
+                aria-label="Close form"
                 onClick={() => {
                   setFormCategory(null)
                   setEditingBudget(null)
@@ -292,13 +305,13 @@ export default function BudgetsPage({
             </div>
             <form className="account-form budget-form" onSubmit={event => void saveBudget(event)}>
               <div className="field">
-                <label htmlFor="budget-limit">Limite mensal (€)</label>
+                <label htmlFor="budget-limit">Monthly limit (€)</label>
                 <input
                   id="budget-limit"
                   inputMode="decimal"
                   value={formAmount}
                   onChange={event => setFormAmount(event.target.value)}
-                  placeholder="Ex.: 200,00"
+                  placeholder="e.g. 200.00"
                   required
                 />
               </div>
@@ -313,10 +326,10 @@ export default function BudgetsPage({
                   }}
                   disabled={saving}
                 >
-                  Cancelar
+                  Cancel
                 </button>
                 <button className="submit account-form__submit" type="submit" disabled={saving}>
-                  {saving ? 'A guardar...' : 'Guardar orçamento'}
+                  {saving ? 'Saving...' : 'Save budget'}
                 </button>
               </div>
             </form>
