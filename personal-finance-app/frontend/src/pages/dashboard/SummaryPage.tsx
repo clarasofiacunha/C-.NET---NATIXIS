@@ -95,7 +95,6 @@ export default function SummaryPage({
 
   const periodDate = new Date(period.year, period.month - 1, 1)
   const isCurrentMonth = period.year === today.getFullYear() && period.month === today.getMonth() + 1
-  const topCategory = categories[0]
   const segments = useMemo(() => {
     return categories.reduce<{ offset: number; items: Array<CategoryExpense & { offset: number }> }>(
       (state, category) => ({
@@ -149,7 +148,6 @@ export default function SummaryPage({
               <strong>{money.format(totalExpenses)}</strong>
               <small>{categories.length === 1 ? '1 category with expenses' : `${categories.length} categories with expenses`}</small>
             </div>
-            {topCategory && <p><b>Highest spend</b> {topCategory.name} · {money.format(topCategory.amount)}</p>}
           </section>
 
           <section className="summary-breakdown" aria-labelledby="category-expenses-title">
