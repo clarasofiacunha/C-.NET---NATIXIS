@@ -142,12 +142,12 @@ export default function SummaryPage({
       {!busy && !error && (
         <>
           <section className="summary-total" aria-label="Total monthly expenses">
-            <span className="summary-total__icon" aria-hidden="true">€</span>
             <div>
               <span>Total expenses</span>
               <strong>{money.format(totalExpenses)}</strong>
               <small>{categories.length === 1 ? '1 category with expenses' : `${categories.length} categories with expenses`}</small>
             </div>
+            <span className="summary-total__icon" aria-hidden="true">€</span>
           </section>
 
           <section className="summary-breakdown" aria-labelledby="category-expenses-title">
