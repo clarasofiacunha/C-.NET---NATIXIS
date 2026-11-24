@@ -6,7 +6,7 @@
 .summary-period strong { min-width: 190px; color: #4a2c54; font-size: 14px; letter-spacing: .01em; text-align: center; text-transform: capitalize; }
 .summary-total { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; overflow: hidden; padding: 25px 28px; border-radius: 18px; background: linear-gradient(128deg, #552b71 0%, #8f55b5 57%, #c285cf 100%); box-shadow: 0 16px 30px rgba(111, 54, 137, .23); color: #fff; }
 .summary-total::before, .summary-total::after { position: absolute; width: 180px; height: 180px; border: 1px solid rgba(255,255,255,.17); border-radius: 50%; content: ''; pointer-events: none; }
-.summary-total::before { top: -120px; right: -15px; }.summary-total::after { right: 38px; bottom: -145px; }
+.summary-total::before { top: -128px; right: 18%; }.summary-total::after { bottom: -140px; left: 10%; }
 .summary-total > * { position: relative; z-index: 1; }
 .summary-total__icon { display: grid; place-items: center; width: 47px; height: 47px; border: 1px solid rgba(255,255,255,.25); border-radius: 14px; background: rgba(255,255,255,.14); font-size: 24px; font-weight: 700; }
 .summary-total div > span, .summary-total small { display: block; font-size: 12px; opacity: .82; }
