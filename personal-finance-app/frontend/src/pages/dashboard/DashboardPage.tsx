@@ -10,6 +10,7 @@ import { groupAccountsByType } from './accountTypes'
 import ConfirmDialog from './ConfirmDialog'
 import type { AccountType } from './accountTypes'
 import '../../styles/dashboard.css'
+import '../../styles/accounts.css'
 
 type Summary = {
   totalBalance: number
@@ -81,6 +82,11 @@ export default function DashboardPage({
   })
   const [transactionSaving, setTransactionSaving] = useState(false)
   const [transactionError, setTransactionError] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryType, setCategoryType] = useState<Category['type']>('Expense')
+  const [categorySaving, setCategorySaving] = useState(false)
+  const [categoryError, setCategoryError] = useState('')
   const currentDate = new Date()
   const [period, setPeriod] = useState({
     year: currentDate.getFullYear(),
@@ -260,6 +266,7 @@ export default function DashboardPage({
 
   function openEditTransaction(transaction: Transaction) {
       setTransactionError('')
+      setAddingCategory(false)
       setEditingTransaction(transaction)
       setTransactionFormOpen(true)
       setTransactionForm({
@@ -272,10 +279,45 @@ export default function DashboardPage({
       })
   }
 
+  function openAddCategory() {
+    setCategoryName('')
+    setCategoryType(transactionForm.type)
+    setCategoryError('')
+    setAddingCategory(true)
+  }
+
+  async function saveCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (categorySaving) return
+    const name = categoryName.trim()
+    if (!name || name.length > 100) {
+      setCategoryError('Enter a category name between 1 and 100 characters.')
+      return
+    }
+    setCategorySaving(true)
+    setCategoryError('')
+    try {
+      const category = await apiMutation<Category>('categories', 'POST', {
+        name,
+        type: categoryType,
+      })
+      setCategories(current => [...current.filter(item => item.id !== category.id), category]
+        .sort((a, b) => a.name.localeCompare(b.name)))
+      setTransactionForm(form => category.type === form.type
+        ? { ...form, categoryId: category.id }
+        : form)
+      setAddingCategory(false)
+    } catch (requestError) {
+      setCategoryError(requestError instanceof Error ? requestError.message : 'Unable to create the category.')
+    } finally {
+      setCategorySaving(false)
+    }
+  }
+
   async function saveTransaction(event: FormEvent<HTMLFormElement>) {
       event.preventDefault()
       const amount = Number(transactionForm.amount.replace(',', '.'))
-      if (!transactionForm.accountId || !transactionForm.categoryId || !transactionForm.date
+      if (!transactionForm.accountId || !categories.some(category => category.id === transactionForm.categoryId && category.type === transactionForm.type) || !transactionForm.date
         || !Number.isFinite(amount) || amount <= 0) {
         setTransactionError('Enter valid transaction details.')
         return
@@ -563,8 +605,12 @@ export default function DashboardPage({
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="transaction-category">Category</label>
-                  <select id="transaction-category" value={transactionForm.categoryId} onChange={event => setTransactionForm(form => ({ ...form, categoryId: event.target.value }))}>
+                  <div className="category-field-heading">
+                    <label htmlFor="transaction-category">Category</label>
+                    <button type="button" className="category-add-button" onClick={openAddCategory} disabled={transactionSaving}>+ Add</button>
+                  </div>
+                  <select id="transaction-category" required value={transactionForm.categoryId} onChange={event => setTransactionForm(form => ({ ...form, categoryId: event.target.value }))}>
+                    <option value="" disabled>Select a category</option>
                     {categories.filter(category => category.type === transactionForm.type).map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </select>
                 </div>
