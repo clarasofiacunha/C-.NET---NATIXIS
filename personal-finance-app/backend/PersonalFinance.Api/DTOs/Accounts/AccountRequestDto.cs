@@ -6,16 +6,16 @@ namespace PersonalFinance.Api.DTOs.Accounts;
 // O mesmo contrato e utilizado na criacao (POST) e na edicao completa (PUT).
 public sealed class AccountRequestDto
 {
-    [Required(ErrorMessage = "O nome e obrigatorio.")]
-    [StringLength(120, ErrorMessage = "O nome pode ter, no maximo, 120 caracteres.")]
+    [Required(ErrorMessage = "The name is required.")]
+    [StringLength(120, ErrorMessage = "The name can have at most 120 characters.")]
     public string? Name { get; set; }
 
-    [Required(ErrorMessage = "O tipo de conta e obrigatorio.")]
+    [Required(ErrorMessage = "The account type is required.")]
     public AccountType? Type { get; set; }
 
-    [Required(ErrorMessage = "O saldo inicial e obrigatorio.")]
+    [Required(ErrorMessage = "The initial balance is required.")]
     [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99",
         ParseLimitsInInvariantCulture = true,
-        ErrorMessage = "O saldo inicial esta fora do intervalo permitido.")]
+        ErrorMessage = "The initial balance is outside the allowed range.")]
     public decimal? InitialBalance { get; set; }
 }

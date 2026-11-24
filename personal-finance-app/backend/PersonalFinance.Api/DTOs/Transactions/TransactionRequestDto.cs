@@ -6,25 +6,25 @@ namespace PersonalFinance.Api.DTOs.Transactions;
 // POST e PUT usam o mesmo contrato. O UserId vem sempre da sessao autenticada.
 public sealed class TransactionRequestDto
 {
-    [Required(ErrorMessage = "A conta e obrigatoria.")]
+    [Required(ErrorMessage = "The account is required.")]
     public Guid? AccountId { get; set; }
 
-    [Required(ErrorMessage = "A categoria e obrigatoria.")]
+    [Required(ErrorMessage = "The category is required.")]
     public Guid? CategoryId { get; set; }
 
-    [Required(ErrorMessage = "O montante e obrigatorio.")]
+    [Required(ErrorMessage = "The amount is required.")]
     [Range(typeof(decimal), "0.01", "9999999999999999.99",
         ParseLimitsInInvariantCulture = true,
-        ErrorMessage = "O montante deve ser positivo e estar dentro do limite permitido.")]
+        ErrorMessage = "The amount must be positive and within the allowed limit.")]
     public decimal? Amount { get; set; }
 
-    [Required(ErrorMessage = "O tipo e obrigatorio.")]
+    [Required(ErrorMessage = "The type is required.")]
     public TransactionType? Type { get; set; }
 
     // DateTimeOffset permite receber um instante com offset e gravar sempre em UTC.
-    [Required(ErrorMessage = "A data e obrigatoria.")]
+    [Required(ErrorMessage = "The date is required.")]
     public DateTimeOffset? Date { get; set; }
 
-    [StringLength(500, ErrorMessage = "A descricao nao pode exceder 500 caracteres.")]
+    [StringLength(500, ErrorMessage = "The description cannot exceed 500 characters.")]
     public string? Description { get; set; }
 }

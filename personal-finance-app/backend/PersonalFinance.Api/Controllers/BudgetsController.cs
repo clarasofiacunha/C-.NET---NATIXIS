@@ -23,7 +23,7 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
         CancellationToken cancellationToken)
     {
         if (year is < 1 or > 9999 || month is < 1 or > 12)
-            return BadRequest(new { error = "Ano ou mês inválido." });
+            return BadRequest(new { error = "Invalid year or month." });
 
         if (!TryGetUserId(out var userId))
             return Unauthorized();
@@ -44,7 +44,7 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
         CancellationToken cancellationToken)
     {
         if (year is < 1 or > 9999 || month is < 1 or > 12)
-            return BadRequest(new { error = "Ano ou mês inválido." });
+            return BadRequest(new { error = "Invalid year or month." });
 
         if (year is null && month is null)
         {
@@ -95,10 +95,10 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
             BudgetOperationStatus.Success =>
                 CreatedAtAction(nameof(GetById), new { id = result.Budget!.Id }, result.Budget),
             BudgetOperationStatus.NotFound =>
-                NotFound(new { error = "Categoria de despesa não encontrada." }),
+                NotFound(new { error = "Expense category not found." }),
             BudgetOperationStatus.Duplicate =>
-                Conflict(new { error = "Já existe um orçamento para esta categoria neste mês." }),
-            _ => throw new InvalidOperationException("Estado de operação de orçamento desconhecido.")
+                Conflict(new { error = "A budget already exists for this category in this month." }),
+            _ => throw new InvalidOperationException("Unknown budget operation status.")
         };
     }
 
@@ -122,11 +122,11 @@ public sealed class BudgetsController(IBudgetService budgets) : ControllerBase
             BudgetOperationStatus.Success => Ok(result.Budget),
             BudgetOperationStatus.NotFound => NotFound(new
             {
-                error = "Orçamento ou categoria de despesa não encontrada."
+                error = "Budget or expense category not found."
             }),
             BudgetOperationStatus.Duplicate =>
-                Conflict(new { error = "Já existe um orçamento para esta categoria neste mês." }),
-            _ => throw new InvalidOperationException("Estado de operação de orçamento desconhecido.")
+                Conflict(new { error = "A budget already exists for this category in this month." }),
+            _ => throw new InvalidOperationException("Unknown budget operation status.")
         };
     }
 

@@ -9,10 +9,10 @@ export async function authRequest<T>(path: string, body?: object): Promise<T> {
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     }, path === 'login'
-      ? 'Email ou password inválidos, ou conta temporariamente bloqueada.'
+      ? 'Invalid email or password, or the account is temporarily locked.'
       : undefined)
   } catch (error) {
-    if (path === 'logout' && error instanceof Error && error.message === 'A sessão terminou. Entra novamente.') {
+    if (path === 'logout' && error instanceof Error && error.message === 'Your session has ended. Please sign in again.') {
       return undefined as T
     }
     throw error

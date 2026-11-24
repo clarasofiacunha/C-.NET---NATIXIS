@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinance.Api.Controllers;
 using PersonalFinance.Api.Data;
+using PersonalFinance.Api.DTOs;
 using PersonalFinance.Api.DTOs.Transactions;
 using PersonalFinance.Api.Models;
 
@@ -138,12 +139,13 @@ public sealed class TransactionsControllerTests
             Transaction(otherId, otherAccount, otherExpense, 50m, new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Utc)));
         await db.SaveChangesAsync();
 
-        var result = await NewController(db, userId).GetAll(
-            new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30),
-            TransactionType.Expense, account.Id, expense.Id, CancellationToken.None);
+        var result = await NewController(db, userId).GetAll(new TransactionQueryParameters
+        {
+            From = new DateOnly(2026, 11, 1), To = new DateOnly(2026, 11, 30),
+            Type = TransactionType.Expense, AccountId = account.Id, CategoryId = expense.Id
+        }, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var items = Assert.IsType<List<TransactionResponseDto>>(ok.Value);
+        var items = Items(result);
         Assert.Equal(2, items.Count);
         Assert.Equal(new[] { 20m, 10m }, items.Select(t => t.Amount));
     }
@@ -162,10 +164,9 @@ public sealed class TransactionsControllerTests
         await db.SaveChangesAsync();
 
         var result = await NewController(db, userId)
-            .GetAll(null, null, null, null, null, CancellationToken.None);
+            .GetAll(new TransactionQueryParameters(), CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var items = Assert.IsType<List<TransactionResponseDto>>(ok.Value);
+        var items = Items(result);
         Assert.Single(items);
         Assert.Equal(10m, items[0].Amount);
     }
@@ -174,9 +175,10 @@ public sealed class TransactionsControllerTests
     public async Task GetAll_FromAfterTo_Returns400()
     {
         await using var db = NewDatabase();
-        var result = await NewController(db, Guid.NewGuid()).GetAll(
-            new DateOnly(2026, 12, 1), new DateOnly(2026, 11, 1),
-            null, null, null, CancellationToken.None);
+        var result = await NewController(db, Guid.NewGuid()).GetAll(new TransactionQueryParameters
+        {
+            From = new DateOnly(2026, 12, 1), To = new DateOnly(2026, 11, 1)
+        }, CancellationToken.None);
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
@@ -449,7 +451,129 @@ public sealed class TransactionsControllerTests
     {
         await using var db = NewDatabase();
         var result = await NewController(db, null)
-            .GetAll(null, null, null, null, null, CancellationToken.None);
+            .GetAll(new TransactionQueryParameters(), CancellationToken.None);
         Assert.IsType<UnauthorizedResult>(result.Result);
+    }
+
+    private static IReadOnlyList<TransactionResponseDto> Items(
+        ActionResult<PagedResponse<TransactionResponseDto>> result) => Page(result).Items;
+
+    private static PagedResponse<TransactionResponseDto> Page(
+        ActionResult<PagedResponse<TransactionResponseDto>> result)
+    {
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        return Assert.IsType<PagedResponse<TransactionResponseDto>>(ok.Value);
+    }
+
+    private static async Task<(AppDbContext Db, Guid UserId)> SeedManyAsync(int count)
+    {
+        var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (account, expense, _) = Seed(db, userId);
+        var start = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+        for (var i = 1; i <= count; i++)
+            db.Transactions.Add(Transaction(userId, account, expense, i, start.AddDays(i)));
+        await db.SaveChangesAsync();
+        return (db, userId);
+    }
+
+    [Fact]
+    public async Task GetAll_PaginatesWithDefaultPageSizeAndMetadata()
+    {
+        var (db, userId) = await SeedManyAsync(45);
+        await using var _ = db;
+
+        var first = Page(await NewController(db, userId)
+            .GetAll(new TransactionQueryParameters(), CancellationToken.None));
+        Assert.Equal(20, first.Items.Count);
+        Assert.Equal(1, first.Page);
+        Assert.Equal(45, first.TotalCount);
+        Assert.Equal(3, first.TotalPages);
+        Assert.Equal(45m, first.Items[0].Amount); // mais recente primeiro
+
+        var last = Page(await NewController(db, userId)
+            .GetAll(new TransactionQueryParameters { Page = 3 }, CancellationToken.None));
+        Assert.Equal(new[] { 5m, 4m, 3m, 2m, 1m }, last.Items.Select(t => t.Amount));
+
+        var beyond = Page(await NewController(db, userId)
+            .GetAll(new TransactionQueryParameters { Page = 10 }, CancellationToken.None));
+        Assert.Empty(beyond.Items);
+        Assert.Equal(45, beyond.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByMinAndMaxAmount()
+    {
+        var (db, userId) = await SeedManyAsync(10);
+        await using var _ = db;
+
+        var items = Items(await NewController(db, userId).GetAll(
+            new TransactionQueryParameters { MinAmount = 3m, MaxAmount = 6m }, CancellationToken.None));
+
+        Assert.Equal(new[] { 6m, 5m, 4m, 3m }, items.Select(t => t.Amount));
+    }
+
+    [Fact]
+    public async Task GetAll_FiltersByAccountType()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (checking, expense, _) = Seed(db, userId);
+        var savings = new Account
+        {
+            UserId = userId, Name = "Savings", Type = AccountType.Savings,
+            InitialBalance = 0m, Balance = 0m
+        };
+        db.Accounts.Add(savings);
+        var day = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.Transactions.AddRange(
+            Transaction(userId, checking, expense, 10m, day),
+            Transaction(userId, savings, expense, 20m, day));
+        await db.SaveChangesAsync();
+
+        var items = Items(await NewController(db, userId).GetAll(
+            new TransactionQueryParameters { AccountType = AccountType.Savings }, CancellationToken.None));
+
+        Assert.Equal(20m, Assert.Single(items).Amount);
+    }
+
+    [Fact]
+    public async Task GetAll_SortsByAmountAndDirection()
+    {
+        await using var db = NewDatabase();
+        var userId = Guid.NewGuid();
+        var (account, expense, _) = Seed(db, userId);
+        var day = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.Transactions.AddRange(
+            Transaction(userId, account, expense, 50m, day),
+            Transaction(userId, account, expense, 5m, day.AddDays(2)),
+            Transaction(userId, account, expense, 500m, day.AddDays(1)));
+        await db.SaveChangesAsync();
+
+        var mostExpensive = Items(await NewController(db, userId).GetAll(
+            new TransactionQueryParameters { SortBy = TransactionSortField.Amount }, CancellationToken.None));
+        Assert.Equal(new[] { 500m, 50m, 5m }, mostExpensive.Select(t => t.Amount));
+
+        var oldest = Items(await NewController(db, userId).GetAll(
+            new TransactionQueryParameters { SortDirection = SortDirection.Asc }, CancellationToken.None));
+        Assert.Equal(new[] { 50m, 500m, 5m }, oldest.Select(t => t.Amount));
+    }
+
+    [Theory]
+    [InlineData(0, 20, null, null)]
+    [InlineData(1, 0, null, null)]
+    [InlineData(1, 101, null, null)]
+    [InlineData(1, 20, 10.0, 5.0)]
+    [InlineData(1, 20, -1.0, null)]
+    public async Task GetAll_InvalidPagingOrAmountRange_Returns400(
+        int page, int pageSize, double? min, double? max)
+    {
+        await using var db = NewDatabase();
+        var result = await NewController(db, Guid.NewGuid()).GetAll(new TransactionQueryParameters
+        {
+            Page = page, PageSize = pageSize,
+            MinAmount = (decimal?)min, MaxAmount = (decimal?)max
+        }, CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 }

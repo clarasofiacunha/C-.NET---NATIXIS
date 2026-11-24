@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PersonalFinance.Api.Data;
+using PersonalFinance.Api.DTOs;
 using PersonalFinance.Api.DTOs.Transactions;
 using PersonalFinance.Api.Models;
 
@@ -8,23 +9,12 @@ namespace PersonalFinance.Api.Services;
 
 public sealed class TransactionService(AppDbContext db) : ITransactionService
 {
-    public async Task<List<TransactionResponseDto>> GetAllAsync(
-        Guid userId, DateOnly? from, DateOnly? to, TransactionType? type,
-        Guid? accountId, Guid? categoryId, CancellationToken cancellationToken)
-    {
-        var query = db.Transactions.AsNoTracking().Where(t => t.UserId == userId);
-        if (from.HasValue)
-            query = query.Where(t => t.Date >= from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
-        if (to.HasValue && to.Value < DateOnly.MaxValue)
-            query = query.Where(t => t.Date < to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
-        if (type.HasValue) query = query.Where(t => t.Type == type.Value);
-        if (accountId.HasValue) query = query.Where(t => t.AccountId == accountId.Value);
-        if (categoryId.HasValue) query = query.Where(t => t.CategoryId == categoryId.Value);
-
-        return await query.OrderByDescending(t => t.Date).ThenBy(t => t.Id)
-            .Select(t => ToResponse(t, t.Account.Name, t.Category.Name))
-            .ToListAsync(cancellationToken);
-    }
+    public Task<PagedResponse<TransactionResponseDto>> GetAllAsync(
+        Guid userId, TransactionQueryParameters query, CancellationToken cancellationToken) =>
+        db.Transactions.AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .ApplyFilters(query)
+            .ToPagedResponseAsync(query, cancellationToken);
 
     public Task<TransactionResponseDto?> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken) =>
         db.Transactions.AsNoTracking()
@@ -37,8 +27,8 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
     {
         if (!TryValidateRequest(request, out var error)) return new(null, error, true);
         var references = await GetReferencesAsync(userId, request, cancellationToken);
-        if (references is null) return new(null, "A conta ou a categoria nao foi encontrada.");
-        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
+        if (references is null) return new(null, "The account or category was not found.");
+        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "The transaction type must match the category type.", true);
 
         var transaction = new FinanceTransaction
         {
@@ -49,7 +39,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         db.Transactions.Add(transaction);
         try { await db.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
-        { return new(null, "A conta ou a categoria ja nao existe."); }
+        { return new(null, "The account or category no longer exists."); }
         return new(ToResponse(transaction, references.Value.AccountName, references.Value.CategoryName), null);
     }
 
@@ -61,8 +51,8 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
             t => t.Id == id && t.UserId == userId, cancellationToken);
         if (transaction is null) return new(null, null);
         var references = await GetReferencesAsync(userId, request, cancellationToken);
-        if (references is null) return new(null, "A conta ou a categoria nao foi encontrada.");
-        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "O tipo da transacao deve coincidir com o tipo da categoria.", true);
+        if (references is null) return new(null, "The account or category was not found.");
+        // if (references.Value.CategoryType != request.Type!.Value) return new(null, "The transaction type must match the category type.", true);
 
         transaction.AccountId = request.AccountId!.Value; transaction.CategoryId = request.CategoryId!.Value;
         transaction.Amount = request.Amount!.Value; transaction.Type = request.Type!.Value;
@@ -71,7 +61,7 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
         try { await db.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { return new(null, null); }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
-        { return new(null, "A conta ou a categoria ja nao existe."); }
+        { return new(null, "The account or category no longer exists."); }
         return new(ToResponse(transaction, references.Value.AccountName, references.Value.CategoryName), null);
     }
 
@@ -105,13 +95,13 @@ public sealed class TransactionService(AppDbContext db) : ITransactionService
     private static bool TryValidateRequest(TransactionRequestDto request, out string? error)
     {
         if (request.AccountId is null || request.AccountId == Guid.Empty || request.CategoryId is null || request.CategoryId == Guid.Empty)
-            { error = "A conta e a categoria devem ter identificadores validos."; return false; }
+            { error = "The account and category must have valid identifiers."; return false; }
         if (request.Type is null || !Enum.IsDefined(request.Type.Value))
-            { error = "O tipo deve ser Income ou Expense."; return false; }
+            { error = "The type must be Income or Expense."; return false; }
         if (request.Amount is null || request.Amount <= 0m || request.Amount > 9999999999999999.99m || decimal.Round(request.Amount.Value, 2) != request.Amount.Value)
-            { error = "O montante deve ser positivo e ter, no maximo, duas casas decimais."; return false; }
-        if (request.Date is null) { error = "A data e obrigatoria."; return false; }
-        if (request.Description?.Length > 500) { error = "A descricao nao pode exceder 500 caracteres."; return false; }
+            { error = "The amount must be positive and have at most two decimal places."; return false; }
+        if (request.Date is null) { error = "The date is required."; return false; }
+        if (request.Description?.Length > 500) { error = "The description cannot exceed 500 characters."; return false; }
         error = null; return true;
     }
 }

@@ -69,8 +69,8 @@ try {
     Write-Host '6. GET por ID e GET com filtro de data e tipo...'
     $byId = Invoke-RestMethod -Uri "$BaseUrl/api/transactions/$transactionId" -WebSession $session
     if ($byId.amount -ne 12.75) { throw 'O valor lido e diferente do valor criado.' }
-    $filtered = Invoke-RestMethod -Uri "$BaseUrl/api/transactions?from=2026-11-03&to=2026-11-03&type=Expense" -WebSession $session
-    if (-not ($filtered | Where-Object { $_.id -eq $transactionId })) {
+    $filtered = Invoke-RestMethod -Uri "$BaseUrl/api/transactions?from=2026-11-03&to=2026-11-03&type=Expense&minAmount=12.75&maxAmount=12.75&sortBy=Amount&pageSize=100" -WebSession $session
+    if (-not ($filtered.items | Where-Object { $_.id -eq $transactionId })) {
         throw 'A transacao nao aparece no filtro por data/tipo.'
     }
 
