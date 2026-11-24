@@ -18,20 +18,3 @@ export async function authRequest<T>(path: string, body?: object): Promise<T> {
     throw error
   }
 }
-
-export async function apiRequest<T>(path: string, query?: Record<string, string | number>): Promise<T> {
-  const search = query ? `?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}` : ''
-  return request<T>(`${baseUrl}/api/${path}${search}`, { method: 'GET' })
-}
-
-export async function apiMutation<T>(
-  path: string,
-  method: 'POST' | 'PUT' | 'DELETE',
-  body?: object,
-): Promise<T> {
-  return request<T>(`${baseUrl}/api/${path}`, {
-    method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-}
