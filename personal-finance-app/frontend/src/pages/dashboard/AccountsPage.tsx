@@ -36,15 +36,6 @@ const chartMoney = new Intl.NumberFormat('en-GB', {
   maximumFractionDigits: 0,
 })
 const chartTooltipDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-const typeLabels: Record<AccountType, string> = {
-  Checking: 'Checking',
-  Savings: 'Savings',
-  Cash: 'Cash',
-  CreditCard: 'Credit card',
-  Investment: 'Investment',
-  Loan: 'Loan',
-  Other: 'Other',
-}
 
 function pad(value: number) {
   return String(value).padStart(2, '0')

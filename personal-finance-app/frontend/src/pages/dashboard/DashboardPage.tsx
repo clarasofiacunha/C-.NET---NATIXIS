@@ -246,12 +246,14 @@ export default function DashboardPage({
   function closeTransactionForm() {
     setTransactionFormOpen(false)
     setEditingTransaction(null)
+    setAddingCategory(false)
   }
 
   // O formulario de criacao e o mesmo da edicao, comecando com valores por omissao.
   function openCreateTransaction() {
     const today = new Date()
     setTransactionError('')
+    setAddingCategory(false)
     setEditingTransaction(null)
     setTransactionForm({
       accountId: groupAccountsByType(accounts)[0]?.accounts[0]?.id ?? '',
@@ -564,7 +566,7 @@ export default function DashboardPage({
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
-      {transactionFormOpen && (
+      {transactionFormOpen && !addingCategory && (
         <div className="account-modal" role="presentation">
           <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="transaction-form-title">
             <div className="account-modal__header">
@@ -580,6 +582,7 @@ export default function DashboardPage({
                   <label htmlFor="transaction-type">Type</label>
                   <select id="transaction-type" value={transactionForm.type} onChange={event => {
                     const type = event.target.value as Transaction['type']
+                    // Escolhe logo uma categoria do novo tipo (ou deixa "Select a category" se nao houver).
                     setTransactionForm(form => ({ ...form, type, categoryId: categoryFor(type, form.categoryId) }))
                   }}>
                     <option value="Expense">Expense</option>
@@ -652,6 +655,40 @@ export default function DashboardPage({
           onConfirm={() => void deleteTransaction(editingTransaction)}
           onCancel={() => setConfirmingDelete(false)}
         />
+      )}
+      {transactionFormOpen && addingCategory && (
+        <div className="account-modal" role="presentation">
+          <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="category-form-title">
+            <div className="account-modal__header">
+              <div>
+                <h3 id="category-form-title">Add category</h3>
+                <p>Create a personal income or expense category.</p>
+              </div>
+              <button type="button" className="account-modal__close" aria-label="Close category form" disabled={categorySaving} onClick={() => setAddingCategory(false)}>×</button>
+            </div>
+            <form className="account-form" onSubmit={saveCategory}>
+              <div className="account-form__fields category-form-fields">
+                <div className="field">
+                  <label htmlFor="category-name">Name</label>
+                  <input id="category-name" autoFocus required maxLength={100} placeholder="e.g. Pets" value={categoryName} disabled={categorySaving} onChange={event => setCategoryName(event.target.value)} />
+                </div>
+                <div className="field">
+                  <label htmlFor="category-type">Type</label>
+                  <select id="category-type" required value={categoryType} disabled={categorySaving} onChange={event => setCategoryType(event.target.value as Category['type'])}>
+                    <option value="Expense">Expense</option>
+                    <option value="Income">Income</option>
+                  </select>
+                </div>
+              </div>
+              {categoryType !== transactionForm.type && <p className="category-form-note">This category will be available for {categoryType.toLowerCase()} transactions. Your current transaction will remain unchanged.</p>}
+              {categoryError && <p className="error" role="alert">{categoryError}</p>}
+              <div className="account-modal__footer">
+                <button type="button" className="account-modal__cancel" disabled={categorySaving} onClick={() => setAddingCategory(false)}>Cancel</button>
+                <button className="submit account-form__submit" type="submit" disabled={categorySaving}>{categorySaving ? 'Saving...' : 'Create category'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
