@@ -1,12 +1,12 @@
+using PersonalFinance.Api.DTOs;
 using PersonalFinance.Api.DTOs.Transactions;
-using PersonalFinance.Api.Models;
 
 namespace PersonalFinance.Api.Services;
 
 public interface ITransactionService
 {
-    Task<List<TransactionResponseDto>> GetAllAsync(Guid userId, DateOnly? from, DateOnly? to,
-        TransactionType? type, Guid? accountId, Guid? categoryId, CancellationToken cancellationToken);
+    Task<PagedResponse<TransactionResponseDto>> GetAllAsync(Guid userId, TransactionQueryParameters query,
+        CancellationToken cancellationToken);
     Task<TransactionResponseDto?> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken);
     Task<TransactionOperationResult> CreateAsync(Guid userId, TransactionRequestDto request, CancellationToken cancellationToken);
     Task<TransactionOperationResult> UpdateAsync(Guid userId, Guid id, TransactionRequestDto request, CancellationToken cancellationToken);

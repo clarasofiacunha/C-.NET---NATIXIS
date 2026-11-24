@@ -100,7 +100,7 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { error = "A conta foi alterada em simultaneo. Tente novamente." });
+            return Conflict(new { error = "The account was changed at the same time. Please try again." });
         }
 
         return Ok(AccountResponseDto.FromModel(account));
@@ -149,20 +149,20 @@ public sealed class AccountsController(AppDbContext db) : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            error = "O nome da conta nao pode estar vazio.";
+            error = "The account name cannot be empty.";
             return false;
         }
 
         if (request.Type is null || !Enum.IsDefined(request.Type.Value))
         {
-            error = "O tipo de conta selecionado nao e valido.";
+            error = "The selected account type is not valid.";
             return false;
         }
 
         if (request.InitialBalance is null ||
             decimal.Round(request.InitialBalance.Value, 2) != request.InitialBalance.Value)
         {
-            error = "O saldo inicial deve ter, no maximo, duas casas decimais.";
+            error = "The initial balance can have at most two decimal places.";
             return false;
         }
 

@@ -53,7 +53,7 @@ public class PasswordRecoveryTests : IClassFixture<PasswordRecoveryWebApplicatio
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(
-            "Se existir uma conta com este email, receberá instruções para redefinir a palavra-passe.",
+            "If an account exists for this email, you will receive instructions to reset your password.",
             body.RootElement.GetProperty("message").GetString());
         Assert.Empty(factory.EmailSender.Links);
     }
@@ -79,7 +79,7 @@ public class PasswordRecoveryTests : IClassFixture<PasswordRecoveryWebApplicatio
             var body = await response.Content.ReadAsStringAsync();
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains("Se existir uma conta", body);
+            Assert.Contains("If an account exists", body);
             Assert.DoesNotContain("token", body, StringComparison.OrdinalIgnoreCase);
             Assert.Single(factory.EmailSender.Links);
         }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PersonalFinance.Api.Data;
+using PersonalFinance.Api.DTOs;
 using PersonalFinance.Api.DTOs.Transactions;
 using PersonalFinance.Api.Models;
 
@@ -18,47 +19,21 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
     private bool TryGetUserId(out Guid userId) =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
+    // Lista paginada, com filtros e ordenacao. Ver TransactionQueryParameters.
     [HttpGet]
-    public async Task<ActionResult<List<TransactionResponseDto>>> GetAll(
-        [FromQuery(Name = "from")] DateOnly? from,
-        [FromQuery(Name = "to")] DateOnly? to,
-        [FromQuery] TransactionType? type,
-        [FromQuery] Guid? accountId,
-        [FromQuery] Guid? categoryId,
+    public async Task<ActionResult<PagedResponse<TransactionResponseDto>>> GetAll(
+        [FromQuery] TransactionQueryParameters query,
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        if (from > to) return BadRequest(new { error = "A data inicial deve ser anterior ou igual a data final." });
-        if (type.HasValue && !Enum.IsDefined(type.Value))
-            return BadRequest(new { error = "O tipo deve ser Income ou Expense." });
+        if (query.Validate() is { } error) return BadRequest(new { error });
 
-        var query = db.Transactions.AsNoTracking().Where(t => t.UserId == userId);
+        var page = await db.Transactions.AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .ApplyFilters(query)
+            .ToPagedResponseAsync(query, cancellationToken);
 
-        // Intervalo [00:00 UTC do inicio, 00:00 UTC do dia seguinte ao fim).
-        // Isto inclui todas as horas do ultimo dia e permite usar o indice por data.
-        if (from.HasValue)
-        {
-            var start = from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            query = query.Where(t => t.Date >= start);
-        }
-        if (to.HasValue && to.Value < DateOnly.MaxValue)
-        {
-            var endExclusive = to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            query = query.Where(t => t.Date < endExclusive);
-        }
-        if (type.HasValue) query = query.Where(t => t.Type == type.Value);
-        if (accountId.HasValue) query = query.Where(t => t.AccountId == accountId.Value);
-        if (categoryId.HasValue) query = query.Where(t => t.CategoryId == categoryId.Value);
-
-        var transactions = await query
-            .OrderByDescending(t => t.Date)
-            .ThenBy(t => t.Id)
-            .Select(t => new TransactionResponseDto(
-                t.Id, t.AccountId, t.Account.Name, t.CategoryId, t.Category.Name,
-                t.Amount, t.Type, t.Date, t.Description))
-            .ToListAsync(cancellationToken);
-
-        return Ok(transactions);
+        return Ok(page);
     }
 
     [HttpGet("{id:guid}")]
@@ -88,13 +63,13 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         var account = await db.Accounts
             .FirstOrDefaultAsync(a => a.Id == values.AccountId && a.UserId == userId,
                 cancellationToken);
-        if (account is null) return NotFound(new { error = "Conta nao encontrada." });
+        if (account is null) return NotFound(new { error = "Account not found." });
 
         var category = await db.Categories.AsNoTracking()
             .Where(c => c.Id == values.CategoryId && c.UserId == userId)
             .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
-        if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
+        if (category is null) return NotFound(new { error = "Category not found." });
 
         var transaction = new FinanceTransaction
         {
@@ -116,11 +91,11 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { error = "A conta foi alterada em simultaneo. Tente novamente." });
+            return Conflict(new { error = "The account was changed at the same time. Please try again." });
         }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
         {
-            return NotFound(new { error = "A conta ou a categoria ja nao existe." });
+            return NotFound(new { error = "The account or category no longer exists." });
         }
 
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id },
@@ -142,20 +117,20 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         var account = await db.Accounts
             .FirstOrDefaultAsync(a => a.Id == values.AccountId && a.UserId == userId,
                 cancellationToken);
-        if (account is null) return NotFound(new { error = "Conta nao encontrada." });
+        if (account is null) return NotFound(new { error = "Account not found." });
 
         var category = await db.Categories.AsNoTracking()
             .Where(c => c.Id == values.CategoryId && c.UserId == userId)
             .Select(c => new { c.Name })
             .FirstOrDefaultAsync(cancellationToken);
-        if (category is null) return NotFound(new { error = "Categoria nao encontrada." });
+        if (category is null) return NotFound(new { error = "Category not found." });
 
         var previousAccount = transaction.AccountId == account.Id
             ? account
             : await db.Accounts.FirstOrDefaultAsync(
                 a => a.Id == transaction.AccountId && a.UserId == userId, cancellationToken);
         if (previousAccount is null)
-            return NotFound(new { error = "A conta associada a transacao nao foi encontrada." });
+            return NotFound(new { error = "The account linked to this transaction was not found." });
 
         if (previousAccount.Id == account.Id)
         {
@@ -184,11 +159,11 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { error = "A conta ou transacao foi alterada em simultaneo. Tente novamente." });
+            return Conflict(new { error = "The account or transaction was changed at the same time. Please try again." });
         }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
         {
-            return NotFound(new { error = "A conta ou a categoria ja nao existe." });
+            return NotFound(new { error = "The account or category no longer exists." });
         }
 
         return Ok(ToResponse(transaction, account.Name, category.Name));
@@ -207,7 +182,7 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == transaction.AccountId && a.UserId == userId,
                 cancellationToken);
         if (account is null)
-            return NotFound(new { error = "A conta associada a transacao nao foi encontrada." });
+            return NotFound(new { error = "The account linked to this transaction was not found." });
 
         account.Balance -= BalanceChange(transaction.Type, transaction.Amount);
         account.Version++;
@@ -218,7 +193,7 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { error = "A conta ou transacao foi alterada em simultaneo. Tente novamente." });
+            return Conflict(new { error = "The account or transaction was changed at the same time. Please try again." });
         }
 
         return NoContent();
@@ -248,13 +223,13 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             request.CategoryId is not Guid categoryId || categoryId == Guid.Empty)
         {
             values = default;
-            error = "A conta e a categoria devem ter identificadores validos.";
+            error = "The account and category must have valid identifiers.";
             return false;
         }
         if (request.Type is not TransactionType type || !Enum.IsDefined(type))
         {
             values = default;
-            error = "O tipo deve ser Income ou Expense.";
+            error = "The type must be Income or Expense.";
             return false;
         }
         if (request.Amount is not decimal amount || amount <= 0m ||
@@ -262,19 +237,19 @@ public sealed class TransactionsController(AppDbContext db) : ControllerBase
             decimal.Round(amount, 2) != amount)
         {
             values = default;
-            error = "O montante deve ser positivo e ter, no maximo, duas casas decimais.";
+            error = "The amount must be positive and have at most two decimal places.";
             return false;
         }
         if (request.Date is not DateTimeOffset date)
         {
             values = default;
-            error = "A data e obrigatoria.";
+            error = "The date is required.";
             return false;
         }
         if (request.Description?.Length > 500)
         {
             values = default;
-            error = "A descricao nao pode exceder 500 caracteres.";
+            error = "The description cannot exceed 500 characters.";
             return false;
         }
 

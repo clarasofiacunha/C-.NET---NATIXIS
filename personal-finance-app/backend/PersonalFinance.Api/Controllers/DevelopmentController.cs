@@ -124,10 +124,10 @@ public class DevelopmentController(
         var selectedYear = year ?? today.Year;
         var selectedMonth = month ?? today.Month;
         if (selectedYear is < 1 or > 9998 || selectedMonth is < 1 or > 12)
-            return BadRequest(new { error = "Ano ou mes invalido." });
+            return BadRequest(new { error = "Invalid year or month." });
 
         if (!await db.Users.AnyAsync(u => u.Id == userId))
-            return NotFound(new { error = "Utilizador nao encontrado." });
+            return NotFound(new { error = "User not found." });
 
         var start = new DateTime(selectedYear, selectedMonth, 1, 0, 0, 0, DateTimeKind.Utc);
         var end = start.AddMonths(1);
