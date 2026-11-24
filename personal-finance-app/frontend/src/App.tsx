@@ -100,7 +100,7 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "budgets" ? (
+          ) : page === "budgets" ? (
             <BudgetsPage
               user={user}
               onNavigate={navigate}
@@ -110,8 +110,7 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "summary" || route === "more" ? (
-          ) : page === "summary" || page === "budgets" || page === "more" ? (
+          ) : page === "summary" || page === "more" ? (
             <EmptyPage
               page={page}
               user={user}
