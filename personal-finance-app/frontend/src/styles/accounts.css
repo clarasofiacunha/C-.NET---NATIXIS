@@ -57,7 +57,7 @@
 .balance-history__point-halo { fill: #fff; stroke: #d9bce6; stroke-width: 2; pointer-events: none; }
 .balance-history__point { fill: #8f55b5; pointer-events: none; }
 .balance-history__tooltip { pointer-events: none; }
-.balance-history__tooltip rect { fill: #4a2c54; filter: drop-shadow(0 4px 6px rgba(48,21,62,.2)); }
+.balance-history__tooltip rect { fill: #8f55b5; filter: drop-shadow(0 4px 6px rgba(48,21,62,.2)); }
 .balance-history__tooltip text { fill: #fff; font-size: 9px; font-weight: 600; }
 .balance-history__tooltip text + text { fill: #e9d7f0; font-size: 10px; }
 .balance-history__label { fill: #8a7a91; font-size: 11px; text-transform: capitalize; }
