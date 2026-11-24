@@ -6,6 +6,7 @@ import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
 import MainNavigation from './MainNavigation'
 import '../../styles/dashboard.css'
+import '../../styles/accounts.css'
 
 type Summary = {
   totalBalance: number
@@ -60,6 +61,11 @@ export default function DashboardPage({
   })
   const [transactionSaving, setTransactionSaving] = useState(false)
   const [transactionError, setTransactionError] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryType, setCategoryType] = useState<Category['type']>('Expense')
+  const [categorySaving, setCategorySaving] = useState(false)
+  const [categoryError, setCategoryError] = useState('')
   const currentDate = new Date()
   const [period, setPeriod] = useState({
     year: currentDate.getFullYear(),
@@ -156,6 +162,7 @@ export default function DashboardPage({
 
   function openEditTransaction(transaction: Transaction) {
       setTransactionError('')
+      setAddingCategory(false)
       setEditingTransaction(transaction)
       setTransactionForm({
         accountId: transaction.accountId,
@@ -167,10 +174,45 @@ export default function DashboardPage({
       })
   }
 
+  function openAddCategory() {
+    setCategoryName('')
+    setCategoryType(transactionForm.type)
+    setCategoryError('')
+    setAddingCategory(true)
+  }
+
+  async function saveCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (categorySaving) return
+    const name = categoryName.trim()
+    if (!name || name.length > 100) {
+      setCategoryError('Enter a category name between 1 and 100 characters.')
+      return
+    }
+    setCategorySaving(true)
+    setCategoryError('')
+    try {
+      const category = await apiMutation<Category>('categories', 'POST', {
+        name,
+        type: categoryType,
+      })
+      setCategories(current => [...current.filter(item => item.id !== category.id), category]
+        .sort((a, b) => a.name.localeCompare(b.name)))
+      setTransactionForm(form => category.type === form.type
+        ? { ...form, categoryId: category.id }
+        : form)
+      setAddingCategory(false)
+    } catch (requestError) {
+      setCategoryError(requestError instanceof Error ? requestError.message : 'Unable to create the category.')
+    } finally {
+      setCategorySaving(false)
+    }
+  }
+
   async function saveTransaction(event: FormEvent<HTMLFormElement>) {
       event.preventDefault()
       const amount = Number(transactionForm.amount.replace(',', '.'))
-      if (!transactionForm.accountId || !transactionForm.categoryId || !transactionForm.date
+      if (!transactionForm.accountId || !categories.some(category => category.id === transactionForm.categoryId && category.type === transactionForm.type) || !transactionForm.date
         || !Number.isFinite(amount) || amount <= 0) {
         setTransactionError('Enter valid transaction details.')
         return
@@ -332,7 +374,7 @@ export default function DashboardPage({
           </section>
         </>
       )}
-      {editingTransaction && (
+      {editingTransaction && !addingCategory && (
         <div className="account-modal" role="presentation">
           <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="transaction-form-title">
             <div className="account-modal__header">
@@ -346,7 +388,7 @@ export default function DashboardPage({
               <div className="account-form__fields">
                 <div className="field">
                   <label htmlFor="transaction-type">Type</label>
-                  <select id="transaction-type" value={transactionForm.type} onChange={event => setTransactionForm(form => ({ ...form, type: event.target.value as Transaction['type'] }))}>
+                  <select id="transaction-type" value={transactionForm.type} onChange={event => setTransactionForm(form => ({ ...form, type: event.target.value as Transaction['type'], categoryId: '' }))}>
                     <option value="Expense">Expense</option>
                     <option value="Income">Income</option>
                   </select>
@@ -366,8 +408,12 @@ export default function DashboardPage({
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="transaction-category">Category</label>
-                  <select id="transaction-category" value={transactionForm.categoryId} onChange={event => setTransactionForm(form => ({ ...form, categoryId: event.target.value }))}>
+                  <div className="category-field-heading">
+                    <label htmlFor="transaction-category">Category</label>
+                    <button type="button" className="category-add-button" onClick={openAddCategory} disabled={transactionSaving}>+ Add</button>
+                  </div>
+                  <select id="transaction-category" required value={transactionForm.categoryId} onChange={event => setTransactionForm(form => ({ ...form, categoryId: event.target.value }))}>
+                    <option value="" disabled>Select a category</option>
                     {categories.filter(category => category.type === transactionForm.type).map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </select>
                 </div>
@@ -391,6 +437,40 @@ export default function DashboardPage({
                 </button>
                 <button type="button" className="account-modal__cancel" onClick={() => setEditingTransaction(null)} disabled={transactionSaving}>Cancel</button>
                 <button className="submit account-form__submit" type="submit" disabled={transactionSaving}>{transactionSaving ? 'Saving...' : 'Save transaction'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {editingTransaction && addingCategory && (
+        <div className="account-modal" role="presentation">
+          <div className="account-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="category-form-title">
+            <div className="account-modal__header">
+              <div>
+                <h3 id="category-form-title">Add category</h3>
+                <p>Create a personal income or expense category.</p>
+              </div>
+              <button type="button" className="account-modal__close" aria-label="Close category form" disabled={categorySaving} onClick={() => setAddingCategory(false)}>×</button>
+            </div>
+            <form className="account-form" onSubmit={saveCategory}>
+              <div className="account-form__fields category-form-fields">
+                <div className="field">
+                  <label htmlFor="category-name">Name</label>
+                  <input id="category-name" autoFocus required maxLength={100} placeholder="e.g. Pets" value={categoryName} disabled={categorySaving} onChange={event => setCategoryName(event.target.value)} />
+                </div>
+                <div className="field">
+                  <label htmlFor="category-type">Type</label>
+                  <select id="category-type" required value={categoryType} disabled={categorySaving} onChange={event => setCategoryType(event.target.value as Category['type'])}>
+                    <option value="Expense">Expense</option>
+                    <option value="Income">Income</option>
+                  </select>
+                </div>
+              </div>
+              {categoryType !== transactionForm.type && <p className="category-form-note">This category will be available for {categoryType.toLowerCase()} transactions. Your current transaction will remain unchanged.</p>}
+              {categoryError && <p className="error" role="alert">{categoryError}</p>}
+              <div className="account-modal__footer">
+                <button type="button" className="account-modal__cancel" disabled={categorySaving} onClick={() => setAddingCategory(false)}>Cancel</button>
+                <button className="submit account-form__submit" type="submit" disabled={categorySaving}>{categorySaving ? 'Saving...' : 'Create category'}</button>
               </div>
             </form>
           </div>
