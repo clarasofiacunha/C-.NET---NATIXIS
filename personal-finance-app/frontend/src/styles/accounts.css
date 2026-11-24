@@ -1,4 +1,8 @@
-.accounts-hero { display: flex; align-items: center; justify-content: space-between; min-height: 132px; padding: 24px 26px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #8f55b5, #b27bca); box-shadow: 0 14px 28px rgba(111, 44, 145, .16); }
+.accounts-hero { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 132px; padding: 24px 26px; overflow: hidden; border-radius: 14px; color: #fff; background: linear-gradient(128deg, #552b71 0%, #8f55b5 57%, #c285cf 100%); box-shadow: 0 16px 30px rgba(111, 54, 137, .23); }
+.accounts-hero::before, .accounts-hero::after { position: absolute; width: 180px; height: 180px; border: 1px solid rgba(255,255,255,.17); border-radius: 50%; content: ''; pointer-events: none; }
+.accounts-hero::before { top: -128px; right: 18%; }
+.accounts-hero::after { bottom: -140px; left: 10%; }
+.accounts-hero > * { position: relative; z-index: 1; }
 .account-notification { position: fixed; z-index: 20; right: 24px; bottom: 24px; max-width: min(360px, calc(100vw - 48px)); margin: 0; padding: 12px 16px; border: 1px solid #e6b8c5; border-radius: 9px; color: #76233d; background: #fff4f6; box-shadow: 0 12px 28px rgba(48, 21, 62, .16); font-size: 12px; }
 .accounts-hero__label, .accounts-hero small { display: block; color: rgba(255,255,255,.78); font-size: 12px; }
 .accounts-hero strong { display: block; margin: 11px 0 6px; font-size: 29px; letter-spacing: -1px; }
@@ -48,6 +52,14 @@
 .chart-grid-line { stroke: #f0eaf3; stroke-width: 1; }
 .balance-history__area { fill: url(#balance-area); }
 .balance-history__line { fill: none; stroke: #8f55b5; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+.balance-history__hit-area { stroke: transparent; stroke-width: 18; cursor: crosshair; }
+.balance-history__guide { stroke: #b987cd; stroke-dasharray: 3 4; stroke-width: 1; pointer-events: none; }
+.balance-history__point-halo { fill: #fff; stroke: #d9bce6; stroke-width: 2; pointer-events: none; }
+.balance-history__point { fill: #8f55b5; pointer-events: none; }
+.balance-history__tooltip { pointer-events: none; }
+.balance-history__tooltip rect { fill: #8f55b5; filter: drop-shadow(0 4px 6px rgba(48,21,62,.2)); }
+.balance-history__tooltip text { fill: #fff; font-size: 9px; font-weight: 600; }
+.balance-history__tooltip text + text { fill: #e9d7f0; font-size: 10px; }
 .balance-history__label { fill: #8a7a91; font-size: 11px; text-transform: capitalize; }
 .balance-history__y-label { fill: #8a7a91; font-size: 10px; }
 .chart-periods { display: flex; justify-content: center; gap: 4px; padding: 0 20px 16px; }
