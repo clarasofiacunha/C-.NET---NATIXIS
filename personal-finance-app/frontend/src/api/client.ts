@@ -3,7 +3,7 @@ const baseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export async function request<T>(
   url: string,
   options: RequestInit,
-  unauthorizedMessage = 'A sessão terminou. Entra novamente.',
+  unauthorizedMessage = 'Your session has ended. Please sign in again.',
 ): Promise<T> {
   let response: Response
   try {
@@ -13,7 +13,7 @@ export async function request<T>(
       ...options,
     })
   } catch {
-    throw new Error('Não foi possível contactar o servidor. Tenta novamente.')
+    throw new Error('Unable to reach the server. Please try again.')
   }
   if (!response.ok) {
     const data = await response.json().catch(() => null)
@@ -22,7 +22,7 @@ export async function request<T>(
       : []
     throw new Error(response.status === 401
       ? unauthorizedMessage
-      : messages.length ? messages.join(' ') : data?.error ?? 'Não foi possível concluir o pedido. Tenta novamente.')
+      : messages.length ? messages.join(' ') : data?.error ?? 'Unable to complete the request. Please try again.')
   }
   return response.status === 204 ? undefined as T : response.json()
 }
@@ -35,6 +35,28 @@ export async function apiRequest<T>(
     ? `?${new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]))}`
     : ''
   return request<T>(`${baseUrl}/api/${path}${search}`, { method: 'GET' })
+}
+
+export type PagedResponse<T> = {
+  items: T[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+// Percorre todas as paginas de um endpoint paginado (ex.: graficos que precisam do historico completo).
+export async function apiRequestAllPages<T>(
+  path: string,
+  query: Record<string, string | number> = {},
+  pageSize = 100,
+): Promise<T[]> {
+  const items: T[] = []
+  for (let page = 1; ; page++) {
+    const result = await apiRequest<PagedResponse<T>>(path, { ...query, page, pageSize })
+    items.push(...result.items)
+    if (page >= result.totalPages) return items
+  }
 }
 
 export async function apiMutation<T>(

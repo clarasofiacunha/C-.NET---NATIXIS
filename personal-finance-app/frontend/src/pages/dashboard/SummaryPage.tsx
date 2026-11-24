@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { apiRequest } from '../../api/client'
+import { apiRequestAllPages } from '../../api/client'
 import { authRequest } from '../auth/auth'
 import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
@@ -63,7 +63,7 @@ export default function SummaryPage({
 
   useEffect(() => {
     let active = true
-    apiRequest<Transaction[]>('transactions', periodRange(period.year, period.month))
+    apiRequestAllPages<Transaction>('transactions', periodRange(period.year, period.month))
       .then(result => {
         if (active) setTransactions(result)
       })

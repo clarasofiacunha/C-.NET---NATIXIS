@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { apiMutation, apiRequest } from '../../api/client'
+import { apiMutation, apiRequest, apiRequestAllPages } from '../../api/client'
 import { authRequest } from '../auth/auth'
 import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
@@ -80,7 +80,7 @@ export default function BudgetsPage({
     Promise.all([
       apiRequest<Budget[]>('budgets', period),
       apiRequest<Category[]>('categories'),
-      apiRequest<Transaction[]>('transactions', {
+      apiRequestAllPages<Transaction>('transactions', {
         from: periodStart,
         to: periodEnd,
         type: 'Expense',

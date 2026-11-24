@@ -59,7 +59,7 @@ public sealed class CategoriesController(ICategoryService categories) : Controll
 
         var result = await categories.CreateAsync(userId, request, cancellationToken);
         if (result.Status == CategoryOperationStatus.Duplicate)
-            return Conflict(new { error = "Já existe uma categoria com este nome e tipo." });
+            return Conflict(new { error = "A category with this name and type already exists." });
 
         return CreatedAtAction(
             nameof(GetById), new { id = result.Category!.Id }, result.Category);
@@ -88,12 +88,12 @@ public sealed class CategoriesController(ICategoryService categories) : Controll
             CategoryOperationStatus.Success => Ok(result.Category),
             CategoryOperationStatus.NotFound => NotFound(),
             CategoryOperationStatus.Duplicate =>
-                Conflict(new { error = "Já existe uma categoria com este nome e tipo." }),
+                Conflict(new { error = "A category with this name and type already exists." }),
             CategoryOperationStatus.InUse => Conflict(new
             {
-                error = "Não é possível alterar o tipo de uma categoria já utilizada."
+                error = "You cannot change the type of a category that is already in use."
             }),
-            _ => throw new InvalidOperationException("Estado de operação de categoria desconhecido.")
+            _ => throw new InvalidOperationException("Unknown category operation status.")
         };
     }
 
@@ -116,9 +116,9 @@ public sealed class CategoriesController(ICategoryService categories) : Controll
             CategoryDeleteStatus.NotFound => NotFound(),
             CategoryDeleteStatus.InUse => Conflict(new
             {
-                error = "Não é possível eliminar uma categoria com transações ou orçamentos associados."
+                error = "You cannot delete a category with associated transactions or budgets."
             }),
-            _ => throw new InvalidOperationException("Estado de eliminação de categoria desconhecido.")
+            _ => throw new InvalidOperationException("Unknown category deletion status.")
         };
     }
 
@@ -129,19 +129,19 @@ public sealed class CategoriesController(ICategoryService categories) : Controll
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            error = "O nome da categoria não pode estar vazio.";
+            error = "The category name cannot be empty.";
             return false;
         }
 
         if (request.Name.Trim().Length > 100)
         {
-            error = "O nome pode ter, no máximo, 100 caracteres.";
+            error = "The name can have at most 100 characters.";
             return false;
         }
 
         if (request.Type is null || !Enum.IsDefined(request.Type.Value))
         {
-            error = "O tipo deve ser Income ou Expense.";
+            error = "The type must be Income or Expense.";
             return false;
         }
 

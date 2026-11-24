@@ -10,10 +10,10 @@ export function useAuthForm(register: boolean, email = '') {
   const [apiError, setApiError] = useState('')
   const [busy, setBusy] = useState(false)
   const errors: Record<Field, string> = {
-    name: values.name.trim().length < 2 ? 'Introduz o teu nome com pelo menos 2 caracteres.' : '',
-    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Introduz um email válido, como nome@exemplo.pt.' : '',
-    password: !values.password ? 'Introduz a tua password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'A password deve cumprir todas as regras abaixo.' : '',
-    confirm: values.confirm !== values.password || !values.confirm ? 'As passwords têm de ser iguais.' : '',
+    name: values.name.trim().length < 2 ? 'Enter your name with at least 2 characters.' : '',
+    email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()) ? 'Enter a valid email, such as name@example.com.' : '',
+    password: !values.password ? 'Enter your password.' : register && !passwordRules.every(rule => rule.test(values.password)) ? 'Your password must meet all the rules below.' : '',
+    confirm: values.confirm !== values.password || !values.confirm ? 'The passwords must match.' : '',
   }
 
   function field(key: Field, label: string, type: string, autoComplete: string, placeholder: string) {

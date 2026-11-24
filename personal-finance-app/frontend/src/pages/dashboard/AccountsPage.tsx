@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { apiMutation, apiRequest } from '../../api/client'
+import { apiMutation, apiRequest, apiRequestAllPages } from '../../api/client'
 import { authRequest } from '../auth/auth'
 import type { User } from '../auth/auth'
 import type { AuthPageMode } from '../auth/AuthPage'
 import MainNavigation from './MainNavigation'
+import ConfirmDialog from './ConfirmDialog'
+import { accountTypeLabels as typeLabels } from './accountTypes'
+import type { AccountType } from './accountTypes'
 import '../../styles/accounts.css'
 import '../../styles/dashboard.css'
-
-type AccountType = 'Checking' | 'Savings' | 'Cash' | 'CreditCard' | 'Investment' | 'Loan' | 'Other'
 
 type Account = {
   id: string
@@ -35,15 +36,6 @@ const chartMoney = new Intl.NumberFormat('en-GB', {
   maximumFractionDigits: 0,
 })
 const chartTooltipDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-const typeLabels: Record<AccountType, string> = {
-  Checking: 'Checking',
-  Savings: 'Savings',
-  Cash: 'Cash',
-  CreditCard: 'Credit card',
-  Investment: 'Investment',
-  Loan: 'Loan',
-  Other: 'Other',
-}
 
 function pad(value: number) {
   return String(value).padStart(2, '0')
@@ -109,6 +101,7 @@ export default function AccountsPage({
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [busy, setBusy] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null)
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('MAX')
   const [activeChartPointIndex, setActiveChartPointIndex] = useState<number | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -122,7 +115,7 @@ export default function AccountsPage({
   const loadAccounts = useCallback(() => {
     return Promise.all([
       apiRequest<Account[]>('accounts'),
-      apiRequest<Transaction[]>('transactions'),
+      apiRequestAllPages<Transaction>('transactions'),
     ])
       .then(([loadedAccounts, loadedTransactions]) => {
         setAccounts(loadedAccounts)
@@ -305,14 +298,15 @@ export default function AccountsPage({
   }
 
   async function deleteAccount(account: Account) {
-    if (!window.confirm(`Delete "${account.name}"? This action cannot be undone.`)) return
     setError('')
     setSaving(true)
     try {
       await apiMutation<void>(`accounts/${account.id}`, 'DELETE')
+      setAccountToDelete(null)
       setBusy(true)
       await loadAccounts()
     } catch (requestError) {
+      setAccountToDelete(null)
       setNotification(requestError instanceof Error ? requestError.message : 'Unable to delete the account.')
       if (notificationTimeout.current !== undefined) {
         window.clearTimeout(notificationTimeout.current)
@@ -378,7 +372,7 @@ export default function AccountsPage({
                     <strong className={account.balance < 0 ? 'expense' : 'account-card__balance'}>{money.format(account.balance)}</strong>
                     <div className="account-card__actions">
                       <button type="button" className="account-action account-action--edit" aria-label={`Edit ${account.name}`} title={`Edit ${account.name}`} onClick={() => openEditForm(account)}><ActionIcon action="edit" /></button>
-                      <button type="button" className="account-action account-action--delete" aria-label={`Delete ${account.name}`} title={`Delete ${account.name}`} onClick={() => void deleteAccount(account)} disabled={saving}><ActionIcon action="delete" /></button>
+                      <button type="button" className="account-action account-action--delete" aria-label={`Delete ${account.name}`} title={`Delete ${account.name}`} onClick={() => setAccountToDelete(account)} disabled={saving}><ActionIcon action="delete" /></button>
                     </div>
                   </article>
                 ))}
@@ -469,7 +463,7 @@ export default function AccountsPage({
                 <h3 id="account-form-title">{isEditing ? 'Edit account' : 'New account'}</h3>
                 <p>{isEditing ? 'Update this account details.' : 'Add an account to track its balance.'}</p>
               </div>
-              <button type="button" className="account-modal__close" aria-label="Fechar formulário" onClick={() => { setIsFormOpen(false); setEditingAccount(null) }} disabled={saving}>×</button>
+              <button type="button" className="account-modal__close" aria-label="Close form" onClick={() => { setIsFormOpen(false); setEditingAccount(null) }} disabled={saving}>×</button>
             </div>
             <form className="account-form" onSubmit={submit}>
               <div className="account-form__fields">
@@ -496,6 +490,16 @@ export default function AccountsPage({
             </form>
           </div>
         </div>
+      )}
+      {accountToDelete && (
+        <ConfirmDialog
+          title="Delete account?"
+          message={`"${accountToDelete.name}" will be permanently deleted. This action cannot be undone.`}
+          confirmLabel="Delete account"
+          busy={saving}
+          onConfirm={() => void deleteAccount(accountToDelete)}
+          onCancel={() => setAccountToDelete(null)}
+        />
       )}
     </div>
   )

@@ -27,7 +27,7 @@ public sealed class SummaryController(IMonthlySummaryService summaries) : Contro
     {
         if (year.HasValue != month.HasValue ||
             year is < 1 or > 9999 || month is < 1 or > 12)
-            return BadRequest(new { error = "Indica um ano válido (1-9999) e um mês válido (1-12), ou omite ambos." });
+            return BadRequest(new { error = "Provide a valid year (1-9999) and month (1-12), or omit both." });
 
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return Unauthorized();

@@ -19,7 +19,7 @@ public class AuthController(
     ILogger<AuthController> logger) : ControllerBase
 {
     private const string PasswordRecoveryMessage =
-        "Se existir uma conta com este email, receberá instruções para redefinir a palavra-passe.";
+        "If an account exists for this email, you will receive instructions to reset your password.";
 
     [HttpPost("register")]
     [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
@@ -61,7 +61,7 @@ public class AuthController(
         var user = await userManager.FindByEmailAsync(email);
 
         if (user is null)
-            return Unauthorized(new { error = "Email ou password inválidos." });
+            return Unauthorized(new { error = "Invalid email or password." });
 
         var result = await signInManager.PasswordSignInAsync(
             user,
@@ -70,7 +70,7 @@ public class AuthController(
             lockoutOnFailure: true);
 
         if (!result.Succeeded)
-            return Unauthorized(new { error = "Email ou password inválidos." });
+            return Unauthorized(new { error = "Invalid email or password." });
 
         return Ok(new LoginResponseDto(user.Id, user.Name, user.Email));
     }
@@ -118,7 +118,7 @@ public class AuthController(
     {
         var user = await userManager.FindByEmailAsync(request.Email!.Trim());
         if (user is null)
-            return BadRequest(new { error = "O link de recuperação é inválido ou expirou." });
+            return BadRequest(new { error = "The recovery link is invalid or has expired." });
 
         var result = await userManager.ResetPasswordAsync(user, request.Token!, request.NewPassword!);
         if (result.Succeeded)
@@ -126,7 +126,7 @@ public class AuthController(
 
         var tokenError = result.Errors.Any(error => error.Code == "InvalidToken");
         if (tokenError)
-            return BadRequest(new { error = "O link de recuperação é inválido ou expirou." });
+            return BadRequest(new { error = "The recovery link is invalid or has expired." });
 
         return BadRequest(new
         {
