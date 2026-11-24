@@ -8,7 +8,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import EmptyPage from "./pages/dashboard/EmptyPage";
 import AccountsPage from "./pages/dashboard/AccountsPage";
-import BudgetsPage from "./pages/dashboard/BudgetsPage";
+import SummaryPage from "./pages/dashboard/SummaryPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
 
@@ -100,8 +100,8 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : page === "budgets" ? (
-            <BudgetsPage
+          ) : route === "summary" ? (
+            <SummaryPage
               user={user}
               onNavigate={navigate}
               onLogout={() => {
@@ -110,7 +110,7 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : page === "summary" || page === "more" ? (
+          ) : route === "budgets" || route === "more" ? (
             <EmptyPage
               page={page}
               user={user}

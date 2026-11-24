@@ -34,6 +34,7 @@ const chartMoney = new Intl.NumberFormat('en-GB', {
   currency: 'EUR',
   maximumFractionDigits: 0,
 })
+const chartTooltipDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 const typeLabels: Record<AccountType, string> = {
   Checking: 'Checking',
   Savings: 'Savings',
@@ -109,6 +110,7 @@ export default function AccountsPage({
   const [busy, setBusy] = useState(true)
   const [saving, setSaving] = useState(false)
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('MAX')
+  const [activeChartPointIndex, setActiveChartPointIndex] = useState<number | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [error, setError] = useState('')
@@ -242,6 +244,9 @@ export default function AccountsPage({
     '1Y': 'Last year',
     MAX: 'All history',
   }
+  const activeChartPoint = chart && activeChartPointIndex !== null
+    ? chart.points[activeChartPointIndex] ?? null
+    : null
 
   function updateForm(field: 'name' | 'type' | 'initialBalance', value: string) {
     setForm(current => ({ ...current, [field]: value }))
@@ -390,7 +395,7 @@ export default function AccountsPage({
             </div>
             {chart ? (
               <div className="balance-history">
-                <svg viewBox="0 0 620 220" role="img" aria-label="Total balance history over time">
+                <svg viewBox="0 0 620 220" role="img" aria-label="Total balance history over time" onMouseLeave={() => setActiveChartPointIndex(null)}>
                   <defs>
                     <linearGradient id="balance-area" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor="#b27bca" stopOpacity=".25" />
@@ -405,6 +410,32 @@ export default function AccountsPage({
                   ))}
                   <polygon className="balance-history__area" points={chart.area} />
                   <polyline className="balance-history__line" points={chart.line} />
+                  {activeChartPoint && (
+                    <g className="balance-history__tooltip" transform={`translate(${activeChartPoint.x > 470 ? activeChartPoint.x - 112 : activeChartPoint.x + 10} ${Math.max(22, activeChartPoint.y - 40)})`}>
+                      <rect width="102" height="34" rx="6" />
+                      <text x="9" y="13">{chartTooltipDate.format(activeChartPoint.date)}</text>
+                      <text x="9" y="26">{chartMoney.format(activeChartPoint.value)}</text>
+                    </g>
+                  )}
+                  {activeChartPoint && <>
+                    <line className="balance-history__guide" x1={activeChartPoint.x} x2={activeChartPoint.x} y1="24" y2="178" />
+                    <circle className="balance-history__point-halo" cx={activeChartPoint.x} cy={activeChartPoint.y} r="7" />
+                    <circle className="balance-history__point" cx={activeChartPoint.x} cy={activeChartPoint.y} r="3.5" />
+                  </>}
+                  {chart.points.map((point, index) => (
+                    <line
+                      className="balance-history__hit-area"
+                      key={`hit-${point.date.toISOString()}-${index}`}
+                      x1={point.x}
+                      x2={point.x}
+                      y1="20"
+                      y2="180"
+                      onMouseEnter={() => setActiveChartPointIndex(index)}
+                      onFocus={() => setActiveChartPointIndex(index)}
+                      tabIndex={0}
+                      aria-label={`${chartTooltipDate.format(point.date)}: ${chartMoney.format(point.value)}`}
+                    />
+                  ))}
                   {chart.points.map((point, index) => (
                     chartLabel(point.date, index) && <text key={`${point.date.toISOString()}-${index}`} className="balance-history__label" x={point.x} y="207" textAnchor="middle">{chartLabel(point.date, index)}</text>
                   ))}
@@ -416,7 +447,10 @@ export default function AccountsPage({
                       key={period}
                       type="button"
                       aria-pressed={chartPeriod === period}
-                      onClick={() => setChartPeriod(period)}
+                      onClick={() => {
+                        setActiveChartPointIndex(null)
+                        setChartPeriod(period)
+                      }}
                     >
                       {period}
                     </button>
