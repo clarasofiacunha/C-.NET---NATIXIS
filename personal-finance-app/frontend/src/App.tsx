@@ -9,6 +9,7 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import EmptyPage from "./pages/dashboard/EmptyPage";
 import AccountsPage from "./pages/dashboard/AccountsPage";
 import SummaryPage from "./pages/dashboard/SummaryPage";
+import BudgetsPage from "./pages/dashboard/BudgetsPage";
 import { authRequest } from "./pages/auth/auth";
 import type { User } from "./pages/auth/auth";
 
@@ -100,7 +101,7 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "summary" ? (
+          ) : page === "summary" ? (
             <SummaryPage
               user={user}
               onNavigate={navigate}
@@ -110,7 +111,17 @@ export default function App() {
                 setLoginNotice({ email: "", message: "Signed out successfully." });
               }}
             />
-          ) : route === "budgets" || route === "more" ? (
+          ) : page === "budgets" ? (
+            <BudgetsPage
+              user={user}
+              onNavigate={navigate}
+              onLogout={() => {
+                setUser(null);
+                navigate("login");
+                setLoginNotice({ email: "", message: "Signed out successfully." });
+              }}
+            />
+          ) : page === "more" ? (
             <EmptyPage
               page={page}
               user={user}
